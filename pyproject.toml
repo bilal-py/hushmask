@@ -14,6 +14,12 @@ dependencies = []
 [project.scripts]
 hushmask = "hushmask.cli:main"
 
+[project.optional-dependencies]
+ner = [
+    "gliner>=0.2.30",
+    "protobuf>=7.36.2",
+]
+
 [build-system]
 requires = ["uv_build>=0.11.17,<0.12.0"]
 build-backend = "uv_build"

@@ -4,6 +4,10 @@ A `Masker` is one session (one conversation, one document). Its vault grows as y
 text, and the same value always gets the same token, e.g. `PERSON_3f9a1c`. Tokens come from an
 HMAC of the normalized value, so pass a fixed `secret` if tokens must stay stable across sessions.
 The vault lives in memory only.
+
+Shorter forms of a known full name are linked to it: if "Rahul Sharma" is `PERSON_3f9a1c`, then
+"Mr Sharma" becomes `PERSON_3f9a1c_1` and "R. Sharma" `PERSON_3f9a1c_2`. The AI can see they are
+the same person, and each restores to exactly what was written.
 """
 
 from __future__ import annotations
@@ -22,10 +26,17 @@ from .detectors import Detector, KnownValue, KnownValuesDetector, default_detect
 from .entities import Entity, EntityType
 from .policy import Policy
 
-_TOKEN = re.compile(r"\b([A-Za-z]+)_([0-9A-Fa-f]{6,64})\b")
+_TOKEN = re.compile(r"\b([A-Za-z]+)_([0-9A-Fa-f]{6,64}(?:_\d{1,3})?)\b")
 _NUMERIC = {EntityType.CARD, EntityType.AADHAAR, EntityType.ACCOUNT, EntityType.IBAN}
 # Types whose raw value must never appear anywhere in the output, even inside another word.
-_SUBSTRING_GUARDED = frozenset(EntityType) - {EntityType.PERSON, EntityType.ADDRESS, EntityType.CUSTOM}
+_SUBSTRING_GUARDED = frozenset(EntityType) - {
+    EntityType.PERSON,
+    EntityType.ADDRESS,
+    EntityType.LOCATION,
+    EntityType.CUSTOM,
+}
+_NAME_WORD = re.compile(r"[^\W\d_]+")
+_TITLES = frozenset({"mr", "mrs", "ms", "miss", "mx", "dr", "prof", "shri", "smt", "sri"})
 
 
 class LeakError(Exception):
@@ -56,6 +67,30 @@ def normalize(entity_type: EntityType, value: str) -> str:
     return " ".join(value.split()).casefold()
 
 
+def name_words(value: str) -> tuple[str, ...]:
+    return tuple(w for w in _NAME_WORD.findall(value.casefold()) if w not in _TITLES)
+
+
+def is_name_variant(short: tuple[str, ...], full: tuple[str, ...]) -> bool:
+    """True if `short` is a shorter form of `full`: its words appear in order, each either equal or an initial.
+
+    ("sharma",) and ("r", "sharma") are variants of ("rahul", "sharma"); ("rahul", "verma") is not.
+    At least one word must match in full, so a lone initial never links.
+    """
+    if not short or len(short) > len(full) or short == full:
+        return False
+    i = 0
+    whole_match = False
+    for word in short:
+        while i < len(full) and not (word == full[i] or (len(word) == 1 and full[i].startswith(word))):
+            i += 1
+        if i == len(full):
+            return False
+        whole_match |= word == full[i]
+        i += 1
+    return whole_match
+
+
 class Masker:
     def __init__(
         self,
@@ -64,16 +99,27 @@ class Masker:
         known: Iterable[KnownValue] = (),
         secret: bytes | None = None,
         detectors: Iterable[Detector] | None = None,
+        extra_detectors: Iterable[Detector] = (),
     ) -> None:
+        """`detectors` replaces the built-in pattern detectors; `extra_detectors` adds to them (e.g. GlinerDetector)."""
+        known = list(known)
         self.policy = policy or Policy.strict()
         self._secret = secret or secrets.token_bytes(32)
         self._known = KnownValuesDetector(known)
         self._detectors: list[Detector] = [
             self._known,
             *(default_detectors() if detectors is None else detectors),
+            *extra_detectors,
         ]
         self._vault: dict[str, str] = {}
         self._token_of: dict[tuple[EntityType, str], str] = {}
+        # Full names (2+ words) that shorter mentions can link to: name words -> base token.
+        self._full_names: dict[tuple[str, ...], str] = {}
+        self._variant_count: dict[str, int] = {}
+        # Known full names are link targets even before they appear in any text.
+        for k in known:
+            if k.type is EntityType.PERSON and len(name_words(k.value)) >= 2:
+                self._token_for(Entity(EntityType.PERSON, 0, 0, " ".join(k.value.split()), "known", 0))
 
     @property
     def vault(self) -> Mapping[str, str]:
@@ -101,18 +147,22 @@ class Masker:
 
     def mask(self, text: str) -> MaskResult:
         entities = self.detect(text)
+        # Full names get their tokens before shorter mentions, so "Mr Sharma" can link to
+        # "Rahul Sharma" even when it appears first in the text.
+        order = sorted(range(len(entities)), key=lambda i: -len(name_words(entities[i].text)))
+        token_at: dict[int, str] = {}
+        for i in order:
+            token_at[i] = self._token_for(entities[i])
+
         parts: list[str] = []
-        tokens: list[str] = []
         pos = 0
-        for entity in entities:
-            token = self._token_for(entity)
-            parts += (text[pos : entity.start], token)
-            tokens.append(token)
+        for i, entity in enumerate(entities):
+            parts += (text[pos : entity.start], token_at[i])
             pos = entity.end
         parts.append(text[pos:])
         masked = "".join(parts)
         self._guard(masked)
-        return MaskResult(masked, tuple(entities), tuple(tokens))
+        return MaskResult(masked, tuple(entities), tuple(token_at[i] for i in range(len(entities))))
 
     def restore(self, text: str) -> RestoreResult:
         restored: set[str] = set()
@@ -137,26 +187,54 @@ class Masker:
         result = walk(value)
         return result, RestoreResult("", frozenset(restored), frozenset(unknown))
 
-    # -- internals ---------------------------------------------------------------------------
+    # -- tokens ------------------------------------------------------------------------------
 
     def _token_for(self, entity: Entity) -> str:
         key = (entity.type, normalize(entity.type, entity.text))
         if token := self._token_of.get(key):
             return token
-        digest = hmac.new(self._secret, f"{key[0]}:{key[1]}".encode(), hashlib.sha256).hexdigest()
+        if entity.type is EntityType.PERSON:
+            token = self._person_token(entity.text)
+        else:
+            token = self._new_token(entity.type, key[1], entity.text)
+        self._token_of[key] = token
+        return token
+
+    def _new_token(self, entity_type: EntityType, normalized: str, original: str) -> str:
+        digest = hmac.new(self._secret, f"{entity_type}:{normalized}".encode(), hashlib.sha256).hexdigest()
         length = 6
-        token = f"{entity.type}_{digest[:length]}"
+        token = f"{entity_type}_{digest[:length]}"
         while token in self._vault:  # different value, same short hash: lengthen
             length += 2
-            token = f"{entity.type}_{digest[:length]}"
-        self._token_of[key] = token
-        self._vault[token] = entity.text
+            token = f"{entity_type}_{digest[:length]}"
+        self._vault[token] = original
         return token
+
+    def _person_token(self, surface: str) -> str:
+        words = name_words(surface)
+        if words in self._full_names:  # same name, written differently ("Mr Rahul Sharma")
+            return self._new_variant(self._full_names[words], surface)
+        bases = {base for full, base in self._full_names.items() if is_name_variant(words, full)}
+        if len(bases) == 1:  # two different Sharmas: ambiguous, don't guess
+            return self._new_variant(bases.pop(), surface)
+        token = self._new_token(EntityType.PERSON, normalize(EntityType.PERSON, surface), surface)
+        if len(words) >= 2:
+            self._full_names.setdefault(words, token)
+        return token
+
+    def _new_variant(self, base: str, surface: str) -> str:
+        n = self._variant_count.get(base, 0) + 1
+        self._variant_count[base] = n
+        token = f"{base}_{n}"
+        self._vault[token] = surface
+        return token
+
+    # -- restore and guard -------------------------------------------------------------------
 
     def _restore_str(self, text: str, restored: set[str], unknown: set[str]) -> str:
         def replace(match: re.Match[str]) -> str:
-            kind, digest = match.group(1).upper(), match.group(2).lower()
-            token = f"{kind}_{digest}"
+            kind, rest = match.group(1).upper(), match.group(2).lower()
+            token = f"{kind}_{rest}"
             if token in self._vault:
                 restored.add(token)
                 return self._vault[token]
@@ -167,17 +245,23 @@ class Masker:
         return _TOKEN.sub(replace, text)
 
     def _guard(self, masked: str) -> None:
-        """Last check before text leaves: fail closed if any PII is still visible."""
+        """Last check before text leaves: fail closed if any PII is still visible.
+
+        Only deterministic detectors run here. A model can flag something new just because the
+        surrounding text changed, and that must not fail requests at random.
+        """
         leaked: set[str] = set()
         token_spans = [m.span() for m in _TOKEN.finditer(masked)]
         for d in self._detectors:
+            if not getattr(d, "deterministic", True):
+                continue
             for e in d.detect(masked):
                 inside_token = any(s <= e.start and e.end <= t for s, t in token_spans)
                 if not inside_token and (e.detector == KnownValuesDetector.name or self.policy.allows(e.type)):
                     leaked.add(e.type)
         folded = masked.casefold()
         for token, original in self._vault.items():
-            kind = EntityType(token.rsplit("_", 1)[0])
+            kind = EntityType(token.split("_", 1)[0])
             if kind in _SUBSTRING_GUARDED and original.casefold() in folded:
                 leaked.add(kind)
         if leaked:

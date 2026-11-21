@@ -16,9 +16,8 @@ POS 4111 1111 1111 1111 AMAZON PAY    POS CARD_3ef187 AMAZON PAY
 
 Merchants, amounts and dates stay, so the AI can still do its job (categorize, summarize, extract).
 
-> **Status: early.** Text only, pattern- and list-based detection. Names the tool hasn't been told about
-> (e.g. a third party in "NEFT FROM PRIYA MEHTA") are **not** caught yet; that needs the model-based
-> detector in phase 1. See [docs/PLAN.md](docs/PLAN.md).
+> **Status: early.** Text only. Patterns, your own list, and an optional local model for names and
+> addresses. See [docs/PLAN.md](docs/PLAN.md) for phases and known gaps.
 
 ## Try it
 
@@ -31,12 +30,42 @@ uv run hushmask restore masked.txt --vault vault.json
 
 The vault file holds the real values. Delete it when you're done.
 
+### Names nobody listed (`--ner`)
+
+Patterns can't recognise "NEFT FROM PRIYA MEHTA". Add a local model (GLiNER, runs on CPU). It's heavy: ~700 MB of PyTorch and friends, plus a ~1 GB model
+downloaded on first use, ~7 s to load and well under a second per page after that.
+
+```bash
+uv sync --extra ner
+uv run hushmask mask examples/statement.txt --preset finance --known "PERSON=Rahul Sharma" --ner
+```
+
+```
+14/11/2026  NEFT FROM PERSON_2939e5 SALARY           85,000.00 Cr
+15/11/2026  STARBUCKS RESERVE                         380.00 Dr
+```
+
+Statements are ALL CAPS and glue words together (`NEFT-SUNITA RAO-REFUND`), which NER models handle badly.
+The model reads a same-length copy with separators turned into spaces and capitals title-cased; on our samples
+that took it from missing third-party names to catching all of them. Organisations are not masked: on a
+statement they are merchants.
+
+### Same person, different spellings
+
+Shorter forms of a full name link to it: if "Rahul Sharma" is `PERSON_3c9ef6`, "Mr Sharma" becomes
+`PERSON_3c9ef6_1`. The AI can tell it's the same person, and each restores to exactly what was written.
+If two people share the surname, nothing is linked.
+
 ## Use it from Python
 
 ```python
-from hushmask import EntityType, KnownValue, Masker, Policy
+from hushmask import EntityType, GlinerDetector, KnownValue, Masker, Policy
 
-masker = Masker(policy=Policy.preset("finance"), known=[KnownValue("Rahul Sharma", EntityType.PERSON)])
+masker = Masker(
+    policy=Policy.preset("finance"),
+    known=[KnownValue("Rahul Sharma", EntityType.PERSON)],
+    extra_detectors=[GlinerDetector()],  # optional, needs the 'ner' extra
+)
 
 masked = masker.mask(statement_text)  # masked.text goes to the AI
 answer = call_your_llm(masked.text)
@@ -58,11 +87,13 @@ One `Masker` is one session: the same value always gets the same token, and the 
 | PAN, IFSC | format | pattern |
 | Account number | next to "A/c", "Account No." | context |
 | Email, UPI ID, phone, IPv4 | format | pattern |
+| Names, street addresses, cities | local model (`--ner`) | confidence ≥ 0.5 |
 
 ## Safety rules
 
-- **Fail closed.** After masking, the text is scanned again. If anything detectable is still visible, `mask()`
-  raises `LeakError` (which never contains the values) instead of returning text.
+- **Fail closed.** After masking, the text is scanned again with the pattern and list detectors. If anything is
+  still visible, `mask()` raises `LeakError` (which never contains the values) instead of returning text. The
+  model doesn't take part in this check, so its noise can't fail requests at random.
 - **Vault in memory.** Nothing is written to disk unless you ask the CLI to (`--vault`).
 - **Not anonymization.** Merchants, amounts, dates and places can still identify someone in combination.
   This hides *who you are* from the AI provider; it doesn't make data anonymous.
@@ -72,4 +103,7 @@ One `Masker` is one session: the same value always gets the same token, and the 
 ```bash
 uv run pytest
 uv run ruff check . && uv run ruff format --check .
+
+# real-model tests (slow, downloads the model)
+HUSHMASK_MODEL_TESTS=1 uv run --extra ner pytest -k real
 ```

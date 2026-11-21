@@ -5,7 +5,7 @@ Three kinds, in order of trust:
 2. Patterns with checksums: cards, IBANs, Aadhaar, and so on. Precise because a random string rarely passes.
 3. Patterns without checksums: phones, account numbers next to "A/c". Useful but noisier.
 
-A model-based detector for free-text names (GLiNER) comes later and plugs into the same protocol.
+4. A model (GLiNER, optional extra) for names, addresses and places nobody listed. See `ner.py`.
 """
 
 from __future__ import annotations
@@ -23,9 +23,16 @@ PRIORITY_CONTEXT = 60  # labelled in the text, e.g. "Account Number: ..."
 PRIORITY_CHECKSUM = 50
 PRIORITY_FORMAT = 40
 PRIORITY_LOOSE = 30
+PRIORITY_MODEL = 20
 
 
 class Detector(Protocol):
+    """Finds PII spans.
+
+    Detectors may also set `deterministic = False` (model-based ones do). Only deterministic
+    detectors take part in the leak guard, so model noise can't fail a request at random.
+    """
+
     name: str
 
     def detect(self, text: str) -> list[Entity]: ...

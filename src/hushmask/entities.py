@@ -7,6 +7,7 @@ from enum import StrEnum
 class EntityType(StrEnum):
     PERSON = "PERSON"
     ADDRESS = "ADDRESS"
+    LOCATION = "LOCATION"
     EMAIL = "EMAIL"
     PHONE = "PHONE"
     CARD = "CARD"

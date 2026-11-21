@@ -14,6 +14,7 @@ from pathlib import Path
 
 from .detectors import KnownValue
 from .masker import LeakError, Masker
+from .ner import DEFAULT_MODEL, GlinerDetector
 from .policy import PRESETS, Policy
 
 
@@ -30,7 +31,13 @@ def _known(args: argparse.Namespace) -> list[KnownValue]:
 
 
 def _masker(args: argparse.Namespace) -> Masker:
-    return Masker(policy=Policy.preset(args.preset), known=_known(args))
+    extra = []
+    if args.ner:
+        print(f"[hushmask] loading {args.ner_model} (first run downloads it)...", file=sys.stderr)
+        detector = GlinerDetector(args.ner_model, threshold=args.ner_threshold)
+        _ = detector.model
+        extra.append(detector)
+    return Masker(policy=Policy.preset(args.preset), known=_known(args), extra_detectors=extra)
 
 
 def cmd_detect(args: argparse.Namespace) -> int:
@@ -82,6 +89,9 @@ def build_parser() -> argparse.ArgumentParser:
             "--known", action="append", metavar="[TYPE=]VALUE", help='always hide this, e.g. "PERSON=Rahul Sharma"'
         )
         p.add_argument("--known-file", metavar="PATH", help="one [TYPE=]VALUE per line")
+        p.add_argument("--ner", action="store_true", help="also find names/addresses/places with a local model")
+        p.add_argument("--ner-model", default=DEFAULT_MODEL, metavar="NAME")
+        p.add_argument("--ner-threshold", type=float, default=0.5, metavar="0-1")
 
     p = sub.add_parser("detect", help="list the PII found")
     add_input(p)

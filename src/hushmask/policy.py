@@ -8,8 +8,9 @@ _ALL = frozenset(EntityType)
 
 PRESETS: dict[str, frozenset[EntityType]] = {
     "strict": _ALL,
-    # Bank branch codes and IPs say little about a person and are sometimes needed by the task.
-    "finance": _ALL - {EntityType.IFSC, EntityType.IP},
+    # Branch codes, IPs and cities say little about a person, and cities often sit inside merchant
+    # names ("MCDONALDS KORAMANGALA") that the AI needs to categorize.
+    "finance": _ALL - {EntityType.IFSC, EntityType.IP, EntityType.LOCATION},
 }
 
 

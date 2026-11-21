@@ -84,6 +84,53 @@ def test_restore_json():
     assert info.restored == {person}
 
 
+def test_name_variants_link_to_full_name():
+    masker = Masker(known=KNOWN)
+    result = masker.mask("Mr Sharma wrote. Rahul Sharma paid. R. Sharma signed. RAHUL SHARMA agreed.")
+    tokens = result.tokens
+    # entities in text order: "Sharma", "Rahul Sharma", "Sharma" (the "R." isn't detected), "RAHUL SHARMA"
+    base = tokens[1]
+    assert re.fullmatch(r"PERSON_[0-9a-f]{6}", base)
+    assert tokens[0] == f"{base}_1"
+    assert tokens[2] == tokens[0]  # same surface "Sharma" -> same variant token
+    assert tokens[3] == base  # same name in other case -> same token
+    assert (
+        masker.restore(result.text).text == "Mr Sharma wrote. Rahul Sharma paid. R. Sharma signed. Rahul Sharma agreed."
+    )
+
+
+def test_known_full_name_is_link_target_before_it_appears():
+    masker = Masker(known=KNOWN)
+    variant = masker.mask("Hi Sharma").tokens[0]
+    full = masker.mask("Rahul Sharma").tokens[0]
+    assert variant == f"{full}_1"
+
+
+def test_ambiguous_surname_is_not_linked():
+    masker = Masker(
+        known=[KnownValue("Rahul Sharma", EntityType.PERSON), KnownValue("Priya Sharma", EntityType.PERSON)]
+    )
+    tokens = masker.mask("Rahul Sharma and Priya Sharma met Mr Sharma").tokens
+    assert "_" not in tokens[2].split("_", 1)[1]  # "Sharma" alone gets its own token, not a variant
+
+
+@pytest.mark.parametrize(
+    ("short", "full", "expected"),
+    [
+        ("Sharma", "Rahul Sharma", True),
+        ("R. Sharma", "Rahul Sharma", True),
+        ("Mr Rahul", "Rahul Kumar Sharma", True),
+        ("Rahul Verma", "Rahul Sharma", False),
+        ("R.", "Rahul Sharma", False),  # a lone initial never links
+        ("Sharma Rahul", "Rahul Sharma", False),  # same length: not a shorter form
+    ],
+)
+def test_is_name_variant(short, full, expected):
+    from hushmask.masker import is_name_variant, name_words
+
+    assert is_name_variant(name_words(short), name_words(full)) is expected
+
+
 def test_vault_is_read_only():
     masker = Masker()
     masker.mask("x@example.com")
