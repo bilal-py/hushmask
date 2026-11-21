@@ -1,0 +1,10 @@
+﻿HDFC BANK - Statement for Rahul Sharma
+Account Number: 50100123456789   IFSC: HDFC0001234
+Address: 14 MG Road, Bengaluru 560001
+
+12/11/2026  UPI/rahul.sharma@okhdfcbank/SWIGGY       450.00 Dr
+13/11/2026  POS 4111 1111 1111 1111 AMAZON PAY      1,299.00 Dr
+14/11/2026  NEFT FROM PRIYA MEHTA SALARY           85,000.00 Cr
+15/11/2026  STARBUCKS RESERVE                         380.00 Dr
+
+Questions? rahul.sharma@example.com or +91 98765 43210

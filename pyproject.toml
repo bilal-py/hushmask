@@ -1,0 +1,35 @@
+[project]
+name = "hushmask"
+version = "0.1.0"
+description = "Hide PII before text goes to an AI, and put the real values back after."
+readme = "README.md"
+authors = [
+    { name = "Bilal", email = "bilalrizvi2110@gmail.com" }
+]
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+hushmask = "hushmask.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.17,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
