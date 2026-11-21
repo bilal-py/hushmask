@@ -340,10 +340,10 @@ upstream_url = "http://localhost:11434/v1"
     config = load_config(path)
     spence = config.apps["spence"]
     assert spence.upstream_url == "https://example.test/v1"
-    assert spence.upstream_api_key == "g-123"
+    assert spence.upstream_key() == "g-123"
     assert spence.known == (KnownValue("Rahul Sharma", EntityType.PERSON),)
     assert config.uses_ner and config.timeout == 30
-    assert config.apps["notes"].upstream_api_key is None
+    assert config.apps["notes"].upstream_key() is None
 
 
 def test_example_config_loads(monkeypatch):

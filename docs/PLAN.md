@@ -26,8 +26,8 @@ Presidio, LLM Guard, Private AI and others already cover parts of this.
 | 0 | Core library: pattern + checksum detectors, known values, HMAC tokens, vault, mask/restore/restore_json, fail-closed guard, CLI, tests | **done** |
 | 1 | Model-based names/places (GLiNER, local CPU); same token for name variants ("Rahul Sharma" / "Mr Sharma") | **done** |
 | 2 | FastAPI proxy compatible with the OpenAI API (no streaming first); per-app API keys → per-app policy | **done** |
-| 3 | Web dashboard + playground (React): paste text, see what the AI receives, manage apps and presets | next |
-| 4 | Evaluation: ai4privacy datasets + own statement samples; leak rate per type; task accuracy with/without masking | |
+| 3 | Web dashboard + playground (React): paste text, see what the AI receives, manage apps and presets | **done** |
+| 4 | Evaluation: ai4privacy datasets + own statement samples; leak rate per type; task accuracy with/without masking | next |
 | 5 | Spence integration (point its base URL at the proxy) | |
 | 6 | Files (PDF → DOCX → images with local OCR), streaming, realistic fake values, browser extension | later |
 
@@ -44,6 +44,12 @@ Presidio, LLM Guard, Private AI and others already cover parts of this.
   Anthropic API), apps live in a TOML file (no UI yet), stats are in memory and reset on restart.
 - Proxy: names in system prompts are only caught if they're known values (model detection is off there).
 - Proxy: JSON content is re-serialized after restore, so its whitespace/formatting changes.
+- Dashboard: the build output isn't committed, so a fresh clone needs `npm run build` in `web/` before the
+  dashboard appears (the proxy works without it). Packaging the build into the wheel comes with a release.
+- Dashboard: provider keys "saved in the apps file" are plain text in `~/.hushmask/apps.json`; an environment
+  variable is the safer option and the default. OS keychain storage would be better (later).
+- Dashboard: stats are in memory and reset on restart; there's no request history.
+- Dashboard: hovering works from the AI's view to the source text, not the other way (the textarea sits on top).
 - Tokens glued to another word with `_` (`ref_PERSON_ab12cd`) aren't restored.
 - A 10-digit number starting 6–9 is treated as an Indian mobile, even if it's an order number.
 - Known values of 3 characters (e.g. "Ram") will also mask the ordinary word.
@@ -74,3 +80,10 @@ Presidio, LLM Guard, Private AI and others already cover parts of this.
 | 2026-11-22 | Proxy: system/developer messages skip model detection | Real run: GLiNER tagged "the person or merchant" as a name, which garbled the instruction and the result |
 | 2026-11-22 | NER: drop spans containing a label word | Same bug from the model side; real names don't contain "person"/"city"/"address" |
 | 2026-11-22 | Proxy binds 127.0.0.1 by default, warns otherwise | Passthrough mode has no auth of its own |
+| 2026-11-22 | `hushmask serve` with no flags = apps managed in the dashboard, saved to `~/.hushmask/apps.json` with each app's token secret | Easiest start; persisted secrets keep tokens stable across restarts. TOML stays as a read-only option |
+| 2026-11-22 | Provider key: env var name (default) or stored in the apps file; read at request time | Env var keeps secrets off disk; reading late means setting it after startup works |
+| 2026-11-22 | Dashboard API guarded by localhost Host check + `X-Hushmask-Admin` header | Blocks DNS rebinding and cross-site requests (custom header forces a CORS preflight we never approve) without login screens for a local tool |
+| 2026-11-22 | Names model loads lazily on first use | Apps and the playground can turn it on at runtime; no 7 s startup for people who don't use it |
+| 2026-11-22 | Dashboard: React + Vite + Tailwind 4, built into `src/hushmask/web_dist`, served at `/dashboard/` | Same stack as Spence; one process serves proxy and UI |
+| 2026-11-22 | Dashboard look: highlighter pens for found values, redaction tape for tokens; Schibsted Grotesk + IBM Plex Mono (document text only); light + dark | The subject is marking up a document before redaction. In dark mode marks are a translucent wash + underline so the textarea's light text stays readable |
+| 2026-11-22 | Phone pattern: brackets only as a pair | The dashboard showed `(…, +91 98765 43210)` losing its `)` in the masked text |

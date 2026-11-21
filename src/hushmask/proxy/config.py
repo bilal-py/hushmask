@@ -49,6 +49,7 @@ class AppConfig:
     upstream_url: str
     key: str | None = None
     upstream_api_key: str | None = None
+    upstream_api_key_env: str | None = None
     preset: str = "strict"
     known: tuple[KnownValue, ...] = ()
     ner: bool = False
@@ -57,6 +58,12 @@ class AppConfig:
     # Same secret for every request of this app, so the same value gets the same token across a whole
     # conversation (history is re-masked on every call) and the provider's prompt cache keeps working.
     secret: bytes = field(default_factory=lambda: secrets.token_bytes(32), repr=False)
+
+    def upstream_key(self) -> str | None:
+        """Read at request time, so an environment variable set after startup still works."""
+        if self.upstream_api_key_env:
+            return os.environ.get(self.upstream_api_key_env) or None
+        return self.upstream_api_key
 
 
 @dataclass(frozen=True)
@@ -110,7 +117,8 @@ def load_config(path: str | Path) -> ProxyConfig:
             name=name,
             key=key,
             upstream_url=_required(raw, "upstream_url", name).rstrip("/"),
-            upstream_api_key=_upstream_key(raw, name),
+            upstream_api_key=raw.get("upstream_api_key"),
+            upstream_api_key_env=_upstream_key_env(raw, name),
             preset=preset,
             known=tuple(KnownValue.parse(s) for s in raw.get("known", [])),
             ner=bool(raw.get("ner", False)),
@@ -138,10 +146,9 @@ def _check_preset(preset: str, app: str) -> None:
         raise ConfigError(f"app {app!r}: unknown preset {preset!r} (choose from {', '.join(PRESETS)})")
 
 
-def _upstream_key(raw: dict[str, Any], app: str) -> str | None:
-    if env := raw.get("upstream_api_key_env"):
-        value = os.environ.get(env)
-        if not value:
-            raise ConfigError(f"app {app!r}: environment variable {env} is not set")
-        return value
-    return raw.get("upstream_api_key")
+def _upstream_key_env(raw: dict[str, Any], app: str) -> str | None:
+    """A config file is checked up front: fail at startup, not on the first request."""
+    env = raw.get("upstream_api_key_env")
+    if env and not os.environ.get(env):
+        raise ConfigError(f"app {app!r}: environment variable {env} is not set")
+    return env or None

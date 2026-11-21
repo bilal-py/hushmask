@@ -30,6 +30,12 @@ def test_detects(text, expected):
     assert types_in(text) == [expected]
 
 
+def test_phone_leaves_closing_bracket_outside():
+    # Found by the dashboard: "(neha@corp.in, +91 98765 43210)" lost its ")" in the masked text.
+    assert types_in("(mail, +91 98765 43210)") == [(EntityType.PHONE, "+91 98765 43210")]
+    assert types_in("call +44 (20) 7946 0958") == [(EntityType.PHONE, "+44 (20) 7946 0958")]
+
+
 def test_detects_aadhaar():
     number = make_aadhaar("23412341234")
     spaced = f"{number[:4]} {number[4:8]} {number[8:]}"

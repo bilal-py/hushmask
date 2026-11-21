@@ -56,6 +56,27 @@ Shorter forms of a full name link to it: if "Rahul Sharma" is `PERSON_3c9ef6`, "
 `PERSON_3c9ef6_1`. The AI can tell it's the same person, and each restores to exactly what was written.
 If two people share the surname, nothing is linked.
 
+## Dashboard
+
+![Playground: highlighted values on the left, what the AI receives on the right](docs/images/playground.png)
+
+```bash
+cd web && npm install && npm run build && cd ..     # once; builds into src/hushmask/web_dist
+uv run --extra proxy hushmask serve                 # add --extra ner for the names model
+# open http://127.0.0.1:8700/dashboard/
+```
+
+- **Playground:** type or paste text and watch it get marked up live. Highlighter colours show what was found
+  (people, numbers, contact details, places); the right side shows the redaction tape the AI would see. Hover a
+  token to find its source. "Send it to an AI" runs the text through one of your apps and shows what left the
+  machine, what the AI answered, and what you get back.
+- **Apps:** add an app per program, pick its provider (OpenAI, Gemini, Ollama, OpenRouter, Groq or any
+  OpenAI-compatible URL), its preset and its "always hide" list, and copy its base URL and key. Apps are saved
+  in `~/.hushmask/apps.json`; per-app counts show how much was hidden or refused (counts only, never values).
+
+The dashboard API only answers on `localhost` and only with an `X-Hushmask-Admin` header, so another website
+open in your browser can't read your apps or create new ones (no CSRF, no DNS rebinding).
+
 ## Use it as a proxy (any OpenAI-compatible app)
 
 The proxy pretends to be the AI. Your app sends its request to hushmask, hushmask masks it, forwards it to
@@ -74,9 +95,16 @@ upstream saw:  NEFT FROM PERSON_4aee58 SALARY 85,000.00 Cr     STARBUCKS RESERVE
 app got back:  14/11/2026  Income   85000.0  PRIYA MEHTA        16/11/2026  Coffee  380.0  STARBUCKS RESERVE
 ```
 
-**Several apps, each with its own rules:** copy [`hushmask.example.toml`](hushmask.example.toml) to
-`hushmask.toml` and run `hushmask serve --config hushmask.toml`. Each app gets its own hushmask key, upstream,
-preset and known values. The real provider key stays in the proxy's environment, never in the app.
+**Several apps, each with its own rules:** run `hushmask serve` with no flags and add apps in the dashboard,
+or keep them in a file: copy [`hushmask.example.toml`](hushmask.example.toml) to `hushmask.toml` and run
+`hushmask serve --config hushmask.toml` (read-only in the dashboard). Each app gets its own hushmask key,
+upstream, preset and known values. The real provider key stays with the proxy, never in the app.
+
+| Start with | Apps come from | Dashboard can edit apps |
+|---|---|---|
+| `hushmask serve` | `~/.hushmask/apps.json` (or `--store PATH`) | yes |
+| `hushmask serve --config hushmask.toml` | the TOML file | no |
+| `hushmask serve --upstream URL` | one implicit app, caller's own key forwarded | no |
 
 What it does with a request:
 

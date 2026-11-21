@@ -15,9 +15,16 @@ uv run hushmask --help
 uv sync --extra ner
 HUSHMASK_MODEL_TESTS=1 uv run --extra ner pytest -k real
 
-# proxy
+# proxy + dashboard (http://127.0.0.1:8700/dashboard/)
+uv run --extra proxy hushmask serve                            # apps in ~/.hushmask/apps.json, editable
 uv run --extra proxy hushmask serve --upstream http://localhost:11434/v1 --preset finance
-uv run --extra proxy hushmask serve --config hushmask.toml     # see hushmask.example.toml
+uv run --extra proxy hushmask serve --config hushmask.toml     # read-only, see hushmask.example.toml
+
+# dashboard (web/), React 19 + TS + Vite + Tailwind 4
+cd web && npm install
+npm run dev      # http://localhost:5173/dashboard/, proxies API calls to a running hushmask serve
+npm run build    # → src/hushmask/web_dist (git-ignored), served by hushmask serve
+npm run lint
 ```
 
 ## Layout (`src/hushmask/`)
@@ -39,8 +46,17 @@ uv run --extra proxy hushmask serve --config hushmask.toml     # see hushmask.ex
   - `config.py`: `AppConfig`, `ProxyConfig`, `load_config` (TOML), `passthrough_config`.
   - `openai.py`: pure functions. `mask_request` (all message fields; system/developer skip models; adds the
     placeholder note), `restore_response` (JSON value by value), `to_sse` (buffered stream), `error_body`.
-  - `server.py`: `create_app(config, transport=)`; one `Masker` per request with the app's secret; shared,
-    locked GLiNER loaded at startup; in-memory `AppStats` (counts only). Tests inject `httpx.MockTransport`.
+  - `store.py`: `AppStore` (apps + token secrets in JSON, atomic writes; read-only when built from TOML).
+  - `server.py`: `create_app(config, store=, transport=)`; `Runtime` (store, `NerHolder` lazy shared model,
+    stats); `forward_chat` (mask → upstream → restore, shared by `/v1/chat/completions` and the dashboard).
+    Tests inject `httpx.MockTransport`.
+  - `admin.py`: `/hushmask/api/*` for the dashboard (info, preview, roundtrip, apps CRUD, rotate key). Every
+    route goes through `admin_guard` (localhost Host + `X-Hushmask-Admin: 1`); keep it that way. Never return
+    a stored provider key to the browser.
+- `web/src/`: `api.ts` (typed client, mirrors `admin.py`; keep in sync), `entities.ts` (type → name and
+  highlighter colour), `ui.tsx` + `lib.ts`, `Playground.tsx` + `HighlightEditor.tsx` (transparent textarea over a
+  mark layer; both use `.doc` metrics, so change them together), `RoundTrip.tsx`, `Apps.tsx` + `AppForm.tsx`.
+  Design tokens live in `index.css`: paper/ink/tape plus `--hl-*` highlighter colours, light and dark.
 
 ## Rules
 

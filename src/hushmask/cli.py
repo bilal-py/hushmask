@@ -17,6 +17,8 @@ from .masker import LeakError, Masker
 from .ner import DEFAULT_MODEL, GlinerDetector
 from .policy import PRESETS, Policy
 
+DEFAULT_STORE = Path.home() / ".hushmask" / "apps.json"  # same as proxy.store.DEFAULT_STORE, without importing it
+
 
 def _read(source: str) -> str:
     # utf-8-sig drops the BOM that Windows tools (PowerShell, Notepad) often add.
@@ -78,11 +80,13 @@ def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
 
-        from .proxy.config import ConfigError, load_config, passthrough_config
+        from .proxy.config import ConfigError, ProxyConfig, load_config, passthrough_config
         from .proxy.server import create_app
+        from .proxy.store import AppStore
     except ImportError:
         print("error: the proxy needs the 'proxy' extra: uv sync --extra proxy", file=sys.stderr)
         return 1
+    store = None
     try:
         if args.config:
             config = load_config(args.config)
@@ -97,17 +101,24 @@ def cmd_serve(args: argparse.Namespace) -> int:
                 ner_threshold=args.ner_threshold,
             )
         else:
-            print("error: give --config hushmask.toml or --upstream URL", file=sys.stderr)
-            return 1
-    except (ConfigError, OSError) as err:
+            store = AppStore.open(Path(args.store))
+            config = ProxyConfig({}, ner_model=args.ner_model, ner_threshold=args.ner_threshold)
+    except (ConfigError, OSError, ValueError, KeyError) as err:
         print(f"error: {err}", file=sys.stderr)
         return 1
 
-    mode = "passthrough" if config.passthrough else f"apps: {', '.join(config.apps)}"
-    print(f"[hushmask] proxy on http://{args.host}:{args.port}/v1 ({mode})", file=sys.stderr)
+    if config.passthrough:
+        mode = f"passthrough to {args.upstream}"
+    elif store is not None:
+        mode = f"apps from {store.path} ({len(store.all())})"
+    else:
+        mode = f"apps from {args.config} (read-only)"
+    base = f"http://{args.host}:{args.port}"
+    print(f"[hushmask] proxy      {base}/v1   ({mode})", file=sys.stderr)
+    print(f"[hushmask] dashboard  {base}/dashboard/", file=sys.stderr)
     if args.host not in ("127.0.0.1", "localhost", "::1"):
         print("[hushmask] warning: listening beyond this machine; anyone who can reach it can use it", file=sys.stderr)
-    uvicorn.run(create_app(config), host=args.host, port=args.port, log_level="warning")
+    uvicorn.run(create_app(config, store=store), host=args.host, port=args.port, log_level="warning")
     return 0
 
 
@@ -147,8 +158,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_restore)
 
     p = sub.add_parser("serve", help="run the OpenAI-compatible privacy proxy")
-    p.add_argument("--config", metavar="PATH", help="hushmask.toml with per-app settings")
-    p.add_argument("--upstream", metavar="URL", help="no config: forward to this OpenAI-compatible base URL")
+    p.add_argument("--config", metavar="PATH", help="read-only apps from a hushmask.toml")
+    p.add_argument("--upstream", metavar="URL", help="passthrough: forward to this base URL with the client's key")
+    p.add_argument(
+        "--store", metavar="PATH", default=str(DEFAULT_STORE), help="apps managed in the dashboard (default mode)"
+    )
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8700)
     p.add_argument("--allow-images", action="store_true", help="send images unmasked instead of refusing them")

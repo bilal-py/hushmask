@@ -12,3 +12,6 @@ wheels/
 # proxy config holds keys
 hushmask.toml
 vault.json
+
+# dashboard build output (npm run build in web/)
+src/hushmask/web_dist/

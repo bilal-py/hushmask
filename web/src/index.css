@@ -1,0 +1,126 @@
+@import "tailwindcss";
+@import "@fontsource/schibsted-grotesk/400.css";
+@import "@fontsource/schibsted-grotesk/500.css";
+@import "@fontsource/schibsted-grotesk/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+/* Paper, ink, redaction tape, and highlighter pens. */
+:root {
+  --paper: #eef1f5;
+  --surface: #ffffff;
+  --ink: #1a2233;
+  --ink-soft: #56607a;
+  --line: #d5dbe5;
+  --tape: #1a2233;
+  --tape-text: #f4f6fa;
+  --hl-person: #ffe45c;
+  --hl-number: #ff9ec7;
+  --hl-contact: #8ef0c6;
+  --hl-place: #9ed8ff;
+  --hl-custom: #cdbbff;
+  --danger: #b42318;
+  --ok: #17734b;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121826;
+    --surface: #1a2233;
+    --ink: #e6eaf2;
+    --ink-soft: #97a1b8;
+    --line: #2c3650;
+    --tape: #e6eaf2;
+    --tape-text: #121826;
+    --hl-person: #e8cf45;
+    --hl-number: #f08cb7;
+    --hl-contact: #6fd9ad;
+    --hl-place: #82c4ec;
+    --hl-custom: #b7a4f2;
+    --danger: #ff8a7a;
+    --ok: #5fd39c;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-tape: var(--tape);
+  --color-tape-text: var(--tape-text);
+  --color-danger: var(--danger);
+  --color-ok: var(--ok);
+  --font-sans: "Schibsted Grotesk", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+html {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* The two layers of the highlighting editor must match to the pixel. */
+.doc {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  padding: 1rem 1.125rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 4;
+}
+
+/* A masked value: redaction tape with the token stamped on it. */
+.tape {
+  background: var(--tape);
+  color: var(--tape-text);
+  border-radius: 3px;
+  padding: 0.05em 0.35em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  border-left: 3px solid var(--swatch, var(--tape));
+  transition: box-shadow 120ms;
+}
+.tape[data-active="true"] {
+  box-shadow: 0 0 0 2px var(--swatch);
+}
+
+/* A detected value in the original: a highlighter stroke. */
+.mark {
+  --under: 0 0 0 0 transparent;
+  background: var(--swatch);
+  border-radius: 2px;
+  color: transparent;
+  box-shadow: var(--under);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.mark[data-active="true"] {
+  box-shadow: var(--under), 0 0 0 2px var(--ink);
+}
+/* The textarea draws light text in dark mode and can't recolour single words, so a solid highlighter
+   would swallow it. A translucent wash plus a solid underline keeps the text readable. */
+@media (prefers-color-scheme: dark) {
+  .mark {
+    --under: inset 0 -2px 0 var(--swatch);
+    background: color-mix(in srgb, var(--swatch) 32%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

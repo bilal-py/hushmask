@@ -183,7 +183,8 @@ def default_detectors() -> list[Detector]:
         PatternDetector(
             "phone-intl",
             EntityType.PHONE,
-            re.compile(r"(?<![\w+])\+\d{1,3}(?:[ .-]?\(?\d{1,5}\)?){2,5}(?!\d)"),
+            # Brackets only as a pair around a group, "+44 (20) 7946 0958", so a ")" after the number stays put.
+            re.compile(r"(?<![\w+])\+\d{1,3}(?:[ .-]?(?:\(\d{1,5}\)|\d{1,5})){2,5}(?!\d)"),
             PRIORITY_LOOSE,
             v.digit_count(8, 15),
         ),
