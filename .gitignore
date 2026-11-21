@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# proxy config holds keys
+hushmask.toml
+vault.json

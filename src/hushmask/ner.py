@@ -125,6 +125,8 @@ class GlinerDetector:
     def detect(self, text: str) -> list[Entity]:
         view = model_view(text)
         labels = list(self.labels)
+        # The model sometimes tags the label word itself ("the person or merchant" as a person).
+        label_words = {w for label in labels for w in label.casefold().split()}
         found: list[Entity] = []
         for offset, piece in chunks(view, self.chunk_chars):
             if not piece.strip():
@@ -134,6 +136,6 @@ class GlinerDetector:
                 if entity_type is None:
                     continue
                 start, end = trim_span(text, offset + p["start"], offset + p["end"])
-                if start < end:
+                if start < end and not label_words & {w.casefold() for w in _WORD.findall(text[start:end])}:
                     found.append(Entity(entity_type, start, end, text[start:end], self.name, PRIORITY_MODEL))
         return found

@@ -74,6 +74,43 @@ def cmd_restore(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_serve(args: argparse.Namespace) -> int:
+    try:
+        import uvicorn
+
+        from .proxy.config import ConfigError, load_config, passthrough_config
+        from .proxy.server import create_app
+    except ImportError:
+        print("error: the proxy needs the 'proxy' extra: uv sync --extra proxy", file=sys.stderr)
+        return 1
+    try:
+        if args.config:
+            config = load_config(args.config)
+        elif args.upstream:
+            config = passthrough_config(
+                args.upstream,
+                preset=args.preset,
+                known=tuple(_known(args)),
+                ner=args.ner,
+                allow_images=args.allow_images,
+                ner_model=args.ner_model,
+                ner_threshold=args.ner_threshold,
+            )
+        else:
+            print("error: give --config hushmask.toml or --upstream URL", file=sys.stderr)
+            return 1
+    except (ConfigError, OSError) as err:
+        print(f"error: {err}", file=sys.stderr)
+        return 1
+
+    mode = "passthrough" if config.passthrough else f"apps: {', '.join(config.apps)}"
+    print(f"[hushmask] proxy on http://{args.host}:{args.port}/v1 ({mode})", file=sys.stderr)
+    if args.host not in ("127.0.0.1", "localhost", "::1"):
+        print("[hushmask] warning: listening beyond this machine; anyone who can reach it can use it", file=sys.stderr)
+    uvicorn.run(create_app(config), host=args.host, port=args.port, log_level="warning")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="hushmask", description="Hide PII before text goes to an AI, and put it back after."
@@ -108,6 +145,15 @@ def build_parser() -> argparse.ArgumentParser:
     add_input(p)
     p.add_argument("--vault", metavar="PATH", required=True)
     p.set_defaults(func=cmd_restore)
+
+    p = sub.add_parser("serve", help="run the OpenAI-compatible privacy proxy")
+    p.add_argument("--config", metavar="PATH", help="hushmask.toml with per-app settings")
+    p.add_argument("--upstream", metavar="URL", help="no config: forward to this OpenAI-compatible base URL")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8700)
+    p.add_argument("--allow-images", action="store_true", help="send images unmasked instead of refusing them")
+    add_masking(p)
+    p.set_defaults(func=cmd_serve)
     return parser
 
 

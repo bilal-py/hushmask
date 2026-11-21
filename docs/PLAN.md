@@ -25,8 +25,8 @@ Presidio, LLM Guard, Private AI and others already cover parts of this.
 |---|---|---|
 | 0 | Core library: pattern + checksum detectors, known values, HMAC tokens, vault, mask/restore/restore_json, fail-closed guard, CLI, tests | **done** |
 | 1 | Model-based names/places (GLiNER, local CPU); same token for name variants ("Rahul Sharma" / "Mr Sharma") | **done** |
-| 2 | FastAPI proxy compatible with the OpenAI API (no streaming first); per-app API keys → per-app policy | next |
-| 3 | Web dashboard + playground (React): paste text, see what the AI receives, manage apps and presets | |
+| 2 | FastAPI proxy compatible with the OpenAI API (no streaming first); per-app API keys → per-app policy | **done** |
+| 3 | Web dashboard + playground (React): paste text, see what the AI receives, manage apps and presets | next |
 | 4 | Evaluation: ai4privacy datasets + own statement samples; leak rate per type; task accuracy with/without masking | |
 | 5 | Spence integration (point its base URL at the proxy) | |
 | 6 | Files (PDF → DOCX → images with local OCR), streaming, realistic fake values, browser extension | later |
@@ -40,6 +40,10 @@ Presidio, LLM Guard, Private AI and others already cover parts of this.
 - Restore keeps the first form seen of a value ("RAHUL SHARMA" and "Rahul Sharma" restore to whichever came first).
 - The model is ~1 GB plus ~700 MB of PyTorch. An ONNX build would cut that a lot (later).
 - The model doesn't take part in the leak guard, so a name it found once but misses on re-scan isn't flagged.
+- Proxy: no real streaming (whole answer arrives at once), only chat completions (no `/v1/responses`, no
+  Anthropic API), apps live in a TOML file (no UI yet), stats are in memory and reset on restart.
+- Proxy: names in system prompts are only caught if they're known values (model detection is off there).
+- Proxy: JSON content is re-serialized after restore, so its whitespace/formatting changes.
 - Tokens glued to another word with `_` (`ref_PERSON_ab12cd`) aren't restored.
 - A 10-digit number starting 6–9 is treated as an Indian mobile, even if it's an order number.
 - Known values of 3 characters (e.g. "Ram") will also mask the ordinary word.
@@ -63,3 +67,10 @@ Presidio, LLM Guard, Private AI and others already cover parts of this.
 | 2026-11-22 | Leak guard uses deterministic detectors only | A model can flag something new on re-scan just because context changed; that must not fail requests at random |
 | 2026-11-22 | Name variants: `PERSON_<base>_<n>` | Links "Mr Sharma" to "Rahul Sharma" for the AI while restoring each to the exact text; ambiguous surnames don't link |
 | 2026-11-22 | gliner + protobuf behind the optional `ner` extra | Core stays dependency-free; the model stack is ~1.7 GB |
+| 2026-11-22 | Proxy: two modes, passthrough (`--upstream`, client key forwarded) and apps (`hushmask.toml`, per-app key/upstream/rules) | One command to try it; per-app rules when several apps share it, with provider keys kept out of apps |
+| 2026-11-22 | Proxy: always call upstream non-streaming; fake-stream SSE back if asked | A token split across chunks can't be restored; buffered SSE keeps streaming clients working |
+| 2026-11-22 | Proxy: per-app fixed token secret | History is re-masked every turn; same tokens keep the conversation consistent and the prompt cache warm |
+| 2026-11-22 | Proxy: refuse images/audio/files unless `allow_images` | They can't be masked; sending them silently would defeat the point |
+| 2026-11-22 | Proxy: system/developer messages skip model detection | Real run: GLiNER tagged "the person or merchant" as a name, which garbled the instruction and the result |
+| 2026-11-22 | NER: drop spans containing a label word | Same bug from the model side; real names don't contain "person"/"city"/"address" |
+| 2026-11-22 | Proxy binds 127.0.0.1 by default, warns otherwise | Passthrough mode has no auth of its own |

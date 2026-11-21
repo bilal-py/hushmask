@@ -65,6 +65,13 @@ def test_detector_maps_offsets_back_to_original_text():
     assert "Sunita Rao" in model.seen[0]  # the model read the cleaned-up view
 
 
+def test_spans_containing_a_label_word_are_dropped():
+    # Real model behaviour: "the person or merchant" came back as a person.
+    model = FakeModel({"person or merchant": "person", "anna weber": "person"})
+    found = GlinerDetector(model).detect("counterparty is the person or merchant, e.g. Anna Weber")
+    assert [e.text for e in found] == ["Anna Weber"]
+
+
 def test_unknown_labels_are_ignored():
     model = FakeModel({"starbucks": "organization"})
     assert GlinerDetector(model, labels={"person": EntityType.PERSON}).detect("STARBUCKS 380.00") == []

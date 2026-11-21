@@ -1,0 +1,22 @@
+# Copy to hushmask.toml (git-ignored) and run: uv run hushmask serve --config hushmask.toml
+# Each app calls the proxy with its own key as the API key, at base URL http://127.0.0.1:8700/v1.
+
+timeout = 600                              # seconds; local models can be slow
+# ner_model = "urchade/gliner_multi_pii-v1"
+# ner_threshold = 0.5
+
+[apps.spence]
+key = "hm-spence-change-me"                # what the app sends as its API key
+upstream_url = "https://generativelanguage.googleapis.com/v1beta/openai"
+upstream_api_key_env = "GEMINI_API_KEY"    # the real provider key stays in the proxy's environment
+preset = "finance"                         # keeps merchants, amounts, cities; hides people, cards, accounts
+known = ["PERSON=Rahul Sharma", "ADDRESS=14 MG Road, Bengaluru 560001"]
+ner = true                                 # needs the 'ner' extra
+# allow_images = false                     # images can't be masked, so they're refused by default
+# placeholder_note = true                  # tell the model to copy placeholders exactly
+# secret = "<64 hex chars>"                # fixed token secret, stable across restarts
+
+[apps.notes]
+key = "hm-notes-change-me"
+upstream_url = "http://localhost:11434/v1" # Ollama
+preset = "strict"

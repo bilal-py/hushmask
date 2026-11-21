@@ -130,10 +130,12 @@ class Masker:
         """Restore-only session from a saved vault (e.g. the CLI). Masking new text will not reuse these tokens."""
         self._vault.update(vault)
 
-    def detect(self, text: str) -> list[Entity]:
+    def detect(self, text: str, *, use_models: bool = True) -> list[Entity]:
+        """`use_models=False` skips model-based detectors, e.g. for instructions where their noise does harm."""
         candidates = [
             e
             for d in self._detectors
+            if use_models or getattr(d, "deterministic", True)
             for e in d.detect(text)
             if e.detector == KnownValuesDetector.name or self.policy.allows(e.type)
         ]
@@ -145,8 +147,8 @@ class Masker:
                 chosen.append(entity)
         return sorted(chosen, key=lambda e: e.start)
 
-    def mask(self, text: str) -> MaskResult:
-        entities = self.detect(text)
+    def mask(self, text: str, *, use_models: bool = True) -> MaskResult:
+        entities = self.detect(text, use_models=use_models)
         # Full names get their tokens before shorter mentions, so "Mr Sharma" can link to
         # "Rahul Sharma" even when it appears first in the text.
         order = sorted(range(len(entities)), key=lambda i: -len(name_words(entities[i].text)))

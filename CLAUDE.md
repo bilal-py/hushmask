@@ -14,6 +14,10 @@ uv run hushmask --help
 # model-based detection (optional extra; ~1.7 GB with the model)
 uv sync --extra ner
 HUSHMASK_MODEL_TESTS=1 uv run --extra ner pytest -k real
+
+# proxy
+uv run --extra proxy hushmask serve --upstream http://localhost:11434/v1 --preset finance
+uv run --extra proxy hushmask serve --config hushmask.toml     # see hushmask.example.toml
 ```
 
 ## Layout (`src/hushmask/`)
@@ -30,7 +34,13 @@ HUSHMASK_MODEL_TESTS=1 uv run --extra ner pytest -k real
   `mask` (HMAC tokens `TYPE_<6 hex>`, lengthened on collision; PERSON variants `PERSON_<base>_<n>`, full names
   assigned first) → `_guard` (deterministic detectors only; fail closed with `LeakError`).
   `restore` / `restore_json` are case-tolerant and report unknown tokens.
-- `cli.py`: `detect`, `mask`, `restore`.
+- `cli.py`: `detect`, `mask`, `restore`, `serve`.
+- `proxy/` (optional `proxy` extra; FastAPI + httpx + uvicorn):
+  - `config.py`: `AppConfig`, `ProxyConfig`, `load_config` (TOML), `passthrough_config`.
+  - `openai.py`: pure functions. `mask_request` (all message fields; system/developer skip models; adds the
+    placeholder note), `restore_response` (JSON value by value), `to_sse` (buffered stream), `error_body`.
+  - `server.py`: `create_app(config, transport=)`; one `Masker` per request with the app's secret; shared,
+    locked GLiNER loaded at startup; in-memory `AppStats` (counts only). Tests inject `httpx.MockTransport`.
 
 ## Rules
 
