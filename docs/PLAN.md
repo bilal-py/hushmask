@@ -27,7 +27,7 @@ Presidio, LLM Guard, Private AI and others already cover parts of this.
 | 1 | Model-based names/places (GLiNER, local CPU); same token for name variants ("Rahul Sharma" / "Mr Sharma") | **done** |
 | 2 | FastAPI proxy compatible with the OpenAI API (no streaming first); per-app API keys → per-app policy | **done** |
 | 3 | Web dashboard + playground (React): paste text, see what the AI receives, manage apps and presets | **done** |
-| 4 | Evaluation: ai4privacy datasets + own statement samples; leak rate per type; task accuracy with/without masking | next |
+| 4 | Evaluation: ai4privacy datasets + own statement samples; leak rate per type; task accuracy with/without masking | **done** (detection); AI-accuracy run pending |
 | 5 | Spence integration (point its base URL at the proxy) | |
 | 6 | Files (PDF → DOCX → images with local OCR), streaming, realistic fake values, browser extension | later |
 
@@ -50,6 +50,13 @@ Presidio, LLM Guard, Private AI and others already cover parts of this.
   variable is the safer option and the default. OS keychain storage would be better (later).
 - Dashboard: stats are in memory and reset on restart; there's no request history.
 - Dashboard: hovering works from the AI's view to the source text, not the other way (the textarea sits on top).
+- Eval: the AI-accuracy run (`hushmask eval task`) hasn't completed yet. With the names model and a 7B Ollama
+  model loaded together, the machine ran out of memory at statement 3 of 8.
+- Eval: on ai4privacy the names model masks ~0.4 ordinary capitalized words per record ("Volunteer", "Hallo").
+  A higher threshold for single-word names might help; measure before changing.
+- Eval: street addresses leak about half the time on English ai4privacy (18/37 protected).
+- Site: the in-browser demo is a JavaScript port of the pattern rules (no names model, FNV hash instead of HMAC).
+  Keep it in sync when detectors change.
 - Tokens glued to another word with `_` (`ref_PERSON_ab12cd`) aren't restored.
 - A 10-digit number starting 6–9 is treated as an Indian mobile, even if it's an order number.
 - Known values of 3 characters (e.g. "Ram") will also mask the ordinary word.
@@ -87,3 +94,10 @@ Presidio, LLM Guard, Private AI and others already cover parts of this.
 | 2026-11-22 | Dashboard: React + Vite + Tailwind 4, built into `src/hushmask/web_dist`, served at `/dashboard/` | Same stack as Spence; one process serves proxy and UI |
 | 2026-11-22 | Dashboard look: highlighter pens for found values, redaction tape for tokens; Schibsted Grotesk + IBM Plex Mono (document text only); light + dark | The subject is marking up a document before redaction. In dark mode marks are a translucent wash + underline so the textarea's light text stays readable |
 | 2026-11-22 | Phone pattern: brackets only as a pair | The dashboard showed `(…, +91 98765 43210)` losing its `)` in the masked text |
+| 2026-11-22 | Evaluation = synthetic statements (seeded, exact labels, merchants marked "keep", true categories) + ai4privacy validation (en, de) | Synthetic is biased towards our formats but measures over-masking and AI accuracy; ai4privacy is outside data for honesty |
+| 2026-11-22 | Score by characters hidden, not by type; partly visible counts as a leak | Privacy is about what the provider can read; half a surname is still out |
+| 2026-11-22 | ai4privacy downloaded at run time to ~/.cache, never committed; only aggregates published | Its licence is academic/non-commercial with no redistribution |
+| 2026-11-22 | Email pattern accepts any letters (`\w`), not just ASCII | First eval run: every synthetic email leak was a `müller@…` address |
+| 2026-11-22 | Added a loose national phone pattern (trunk 0 or bracketed area code, 9–14 digits, dates rejected) | ai4privacy phone leaks 17 → 3 (en) and 11 → 3 (de) with zero new over-masking on statements |
+| 2026-11-22 | Names model: drop spans with fewer than 2 letters | First eval run showed single letters ("M") masked as people |
+| 2026-11-22 | Cards stay Luhn-checked even though ai4privacy's random card numbers then leak | Matching any 16-digit run would mask account numbers and references; real cards pass Luhn |

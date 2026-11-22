@@ -122,6 +122,84 @@ def cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _progress(message: str) -> None:
+    print(f"[hushmask eval] {message}", file=sys.stderr)
+
+
+def _ner_detector(args: argparse.Namespace) -> GlinerDetector | None:
+    if not args.ner:
+        return None
+    _progress(f"loading {args.ner_model}...")
+    detector = GlinerDetector(args.ner_model, threshold=args.ner_threshold)
+    _ = detector.model
+    return detector
+
+
+def cmd_eval_detect(args: argparse.Namespace) -> int:
+    from .evaluation import ai4privacy, detection, synthetic
+    from .evaluation.report import write_results
+
+    if args.dataset == "synthetic":
+        docs = synthetic.generate(args.n, args.seed)
+        preset = args.preset or "finance"
+        title = f"Synthetic bank statements ({preset} preset)"
+        description = (
+            f"{len(docs)} generated statements (seed {args.seed}), 60% Indian and 40% European formats. Your list = "
+            "the account holder's name and address, as a real user would enter them."
+        )
+        stem = f"detect-synthetic-{preset}"
+    else:
+        _progress(f"loading ai4privacy ({args.language}), downloading on first use...")
+        docs = ai4privacy.load(args.language, args.n, args.seed)
+        preset = args.preset or "strict"
+        title = f"ai4privacy pii-masking-400k, validation, {args.language} ({preset} preset)"
+        description = (
+            f"{len(docs)} random records (seed {args.seed}) from the "
+            "[ai4privacy](https://huggingface.co/datasets/ai4privacy/pii-masking-400k) validation split, used under "
+            "its academic, non-commercial licence. Not built around hushmask's formats. Their GIVENNAME/SURNAME count "
+            "as PERSON, STREET/BUILDINGNUM as ADDRESS, CITY as LOCATION."
+        )
+        stem = f"detect-ai4privacy-{args.language}-{preset}"
+
+    setups = detection.evaluate(docs, preset=preset, model=_ner_detector(args), progress=_progress)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    run = {"title": title, "description": description, "dataset": args.dataset, "preset": preset, "setups": setups}
+    (out / f"{stem}.json").write_text(json.dumps(run, indent=2, ensure_ascii=False), encoding="utf-8")
+    for name, r in setups.items():
+        print(f"{name:<40} leak {100 * r['leak_rate']:5.1f}%   over-masked {r['false_positives']:>4}   "
+              f"merchants damaged {r['keep_damaged']}/{r['keep_total']}")  # fmt: skip
+    print(f"wrote {write_results(out)}")
+    return 0
+
+
+def cmd_eval_task(args: argparse.Namespace) -> int:
+    import os
+
+    from .evaluation import synthetic, task
+    from .evaluation.report import write_results
+
+    docs = synthetic.generate(args.n, args.seed)
+    api_key = os.environ.get(args.api_key_env) if args.api_key_env else None
+    run = task.evaluate(
+        docs,
+        upstream_url=args.upstream,
+        model=args.model,
+        api_key=api_key,
+        ner=_ner_detector(args),
+        progress=_progress,
+    )
+    run["ner"] = bool(args.ner)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    safe_model = "".join(c if c.isalnum() else "-" for c in args.model)
+    (out / f"task-{safe_model}.json").write_text(json.dumps(run, indent=2, ensure_ascii=False), encoding="utf-8")
+    for name, r in run["conditions"].items():
+        print(f"{name:<18} category accuracy {100 * r['category_accuracy']:5.1f}%")
+    print(f"wrote {write_results(out)}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="hushmask", description="Hide PII before text goes to an AI, and put it back after."
@@ -168,6 +246,31 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--allow-images", action="store_true", help="send images unmasked instead of refusing them")
     add_masking(p)
     p.set_defaults(func=cmd_serve)
+
+    p = sub.add_parser("eval", help="measure leaks, over-masking and the cost to AI accuracy")
+    eval_sub = p.add_subparsers(dest="eval_command", required=True)
+
+    def add_eval_common(q: argparse.ArgumentParser, n: int) -> None:
+        q.add_argument("--n", type=int, default=n, help=f"documents to use (default {n})")
+        q.add_argument("--seed", type=int, default=7)
+        q.add_argument("--out", default="docs/eval", metavar="DIR")
+        q.add_argument("--ner", action="store_true", help="also evaluate with the names model")
+        q.add_argument("--ner-model", default=DEFAULT_MODEL, metavar="NAME")
+        q.add_argument("--ner-threshold", type=float, default=0.5, metavar="0-1")
+
+    q = eval_sub.add_parser("detect", help="leak rate and over-masking on labelled data")
+    q.add_argument("--dataset", choices=["synthetic", "ai4privacy"], default="synthetic")
+    q.add_argument("--language", default="en", help="ai4privacy language: en, de, fr, es, it, nl")
+    q.add_argument("--preset", choices=sorted(PRESETS), help="default: finance for synthetic, strict for ai4privacy")
+    add_eval_common(q, 300)
+    q.set_defaults(func=cmd_eval_detect)
+
+    q = eval_sub.add_parser("task", help="AI categorization accuracy with and without masking")
+    q.add_argument("--upstream", required=True, metavar="URL", help="OpenAI-compatible base URL, e.g. Ollama")
+    q.add_argument("--model", required=True)
+    q.add_argument("--api-key-env", metavar="VAR")
+    add_eval_common(q, 8)
+    q.set_defaults(func=cmd_eval_task)
     return parser
 
 

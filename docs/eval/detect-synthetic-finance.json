@@ -1,0 +1,287 @@
+{
+  "title": "Synthetic bank statements (finance preset)",
+  "description": "300 generated statements (seed 7), 60% Indian and 40% European formats. Your list = the account holder's name and address, as a real user would enter them.",
+  "dataset": "synthetic",
+  "preset": "finance",
+  "setups": {
+    "patterns": {
+      "docs": 300,
+      "values": 3217,
+      "leak_rate": 0.4942,
+      "per_type": {
+        "AADHAAR": {
+          "total": 70,
+          "protected": 70,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "ACCOUNT": {
+          "total": 178,
+          "protected": 178,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "ADDRESS": {
+          "total": 300,
+          "protected": 0,
+          "partial": 0,
+          "leaked": 300,
+          "leak_rate": 1.0
+        },
+        "CARD": {
+          "total": 485,
+          "protected": 485,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "EMAIL": {
+          "total": 300,
+          "protected": 300,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "IBAN": {
+          "total": 122,
+          "protected": 122,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "PAN": {
+          "total": 70,
+          "protected": 70,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "PERSON": {
+          "total": 1290,
+          "protected": 0,
+          "partial": 0,
+          "leaked": 1290,
+          "leak_rate": 1.0
+        },
+        "PHONE": {
+          "total": 300,
+          "protected": 300,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "UPI": {
+          "total": 102,
+          "protected": 102,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        }
+      },
+      "out_of_scope": {
+        "IFSC": {
+          "total": 178,
+          "protected": 0
+        },
+        "LOCATION": {
+          "total": 633,
+          "protected": 0
+        }
+      },
+      "false_positives": 0,
+      "false_positive_examples": [],
+      "keep_total": 1396,
+      "keep_damaged": 0,
+      "keep_damaged_examples": [],
+      "ms_per_doc": 0.4
+    },
+    "patterns + your list": {
+      "docs": 300,
+      "values": 3217,
+      "leak_rate": 0.2704,
+      "per_type": {
+        "AADHAAR": {
+          "total": 70,
+          "protected": 70,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "ACCOUNT": {
+          "total": 178,
+          "protected": 178,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "ADDRESS": {
+          "total": 300,
+          "protected": 270,
+          "partial": 0,
+          "leaked": 30,
+          "leak_rate": 0.1
+        },
+        "CARD": {
+          "total": 485,
+          "protected": 485,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "EMAIL": {
+          "total": 300,
+          "protected": 300,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "IBAN": {
+          "total": 122,
+          "protected": 122,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "PAN": {
+          "total": 70,
+          "protected": 70,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "PERSON": {
+          "total": 1290,
+          "protected": 450,
+          "partial": 89,
+          "leaked": 751,
+          "leak_rate": 0.6512
+        },
+        "PHONE": {
+          "total": 300,
+          "protected": 300,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "UPI": {
+          "total": 102,
+          "protected": 102,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        }
+      },
+      "out_of_scope": {
+        "IFSC": {
+          "total": 178,
+          "protected": 0
+        },
+        "LOCATION": {
+          "total": 633,
+          "protected": 0
+        }
+      },
+      "false_positives": 0,
+      "false_positive_examples": [],
+      "keep_total": 1396,
+      "keep_damaged": 0,
+      "keep_damaged_examples": [],
+      "ms_per_doc": 0.4
+    },
+    "patterns + your list + names model": {
+      "docs": 300,
+      "values": 3217,
+      "leak_rate": 0.0059,
+      "per_type": {
+        "AADHAAR": {
+          "total": 70,
+          "protected": 70,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "ACCOUNT": {
+          "total": 178,
+          "protected": 178,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "ADDRESS": {
+          "total": 300,
+          "protected": 297,
+          "partial": 2,
+          "leaked": 1,
+          "leak_rate": 0.01
+        },
+        "CARD": {
+          "total": 485,
+          "protected": 485,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "EMAIL": {
+          "total": 300,
+          "protected": 300,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "IBAN": {
+          "total": 122,
+          "protected": 122,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "PAN": {
+          "total": 70,
+          "protected": 70,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "PERSON": {
+          "total": 1290,
+          "protected": 1274,
+          "partial": 2,
+          "leaked": 14,
+          "leak_rate": 0.0124
+        },
+        "PHONE": {
+          "total": 300,
+          "protected": 300,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "UPI": {
+          "total": 102,
+          "protected": 102,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        }
+      },
+      "out_of_scope": {
+        "IFSC": {
+          "total": 178,
+          "protected": 0
+        },
+        "LOCATION": {
+          "total": 633,
+          "protected": 0
+        }
+      },
+      "false_positives": 0,
+      "false_positive_examples": [],
+      "keep_total": 1396,
+      "keep_damaged": 0,
+      "keep_damaged_examples": [],
+      "ms_per_doc": 376.9
+    }
+  }
+}

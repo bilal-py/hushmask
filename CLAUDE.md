@@ -58,6 +58,20 @@ npm run lint
   mark layer; both use `.doc` metrics, so change them together), `RoundTrip.tsx`, `Apps.tsx` + `AppForm.tsx`.
   Design tokens live in `index.css`: paper/ink/tape plus `--hl-*` highlighter colours, light and dark.
 
+- `evaluation/` (`hushmask eval`): `metrics.py` (character coverage scoring, `Doc`, `Score`), `synthetic.py`
+  (seeded labelled statements with merchants as "keep" and true categories), `ai4privacy.py` (downloads to
+  `~/.cache/hushmask`, never commit the data: licence forbids redistribution), `detection.py` (setups:
+  patterns → + your list → + names model), `task.py` (AI accuracy with/without masking), `report.py`
+  (rebuilds `docs/eval/RESULTS.md` from the JSON files there).
+- `site/index.html`: the self-contained project page. Its demo is a JS port of the pattern rules in
+  `detectors.py`; when a pattern changes, change it there too.
+
+## Evaluation loop
+
+When changing a detector, re-run `uv run hushmask eval detect` (fast without `--ner`) and check that leaks go
+down without over-masked spans or damaged merchants going up. Commit the updated `docs/eval/*.json` and
+`RESULTS.md` with the change.
+
 ## Rules
 
 - Never put PII values in exceptions, logs or test failure messages from library code.

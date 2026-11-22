@@ -30,6 +30,25 @@ def test_detects(text, expected):
     assert types_in(text) == [expected]
 
 
+@pytest.mark.parametrize("email", ["anna.müller@web.de", "grégori.laudicina@tutanota.com"])
+def test_emails_with_accented_letters(email):
+    assert types_in(f"write to {email}.") == [(EntityType.EMAIL, email)]
+
+
+@pytest.mark.parametrize("phone", ["(776) 5008567", "0296 69224164", "0044 92003-6685", "0167 29.907.3017"])
+def test_loose_national_phone_formats(phone):
+    assert types_in(f"call {phone} today") == [(EntityType.PHONE, phone)]
+    assert types_in(f"My number is {phone}.") == [(EntityType.PHONE, phone)]  # sentence-ending full stop
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["01.02.2026 1030 ATM", "on 2026-11-22 0930", "ref 0001234", "12/11/2026  POS 380.00 Dr", "Balance 085.50"],
+)
+def test_loose_phone_ignores_dates_and_short_numbers(text):
+    assert [t for t, _ in types_in(text)] == []
+
+
 def test_phone_leaves_closing_bracket_outside():
     # Found by the dashboard: "(neha@corp.in, +91 98765 43210)" lost its ")" in the masked text.
     assert types_in("(mail, +91 98765 43210)") == [(EntityType.PHONE, "+91 98765 43210")]

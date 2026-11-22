@@ -84,6 +84,21 @@ def digit_count(low: int, high: int):
     return check
 
 
+_DATE = re.compile(r"(?<!\d)\d{1,4}[./-]\d{1,2}[./-]\d{1,4}(?!\d)")
+
+
+def not_date_like(value: str) -> bool:
+    """Reject "01.02.2026 1030"-style runs: dates must stay readable on statements."""
+    return _DATE.search(value) is None
+
+
+def all_of(*checks):
+    def check(value: str) -> bool:
+        return all(c(value) for c in checks)
+
+    return check
+
+
 def ipv4(value: str) -> bool:
     parts = value.split(".")
     return len(parts) == 4 and all(p.isdigit() and int(p) <= 255 and str(int(p)) == p for p in parts)

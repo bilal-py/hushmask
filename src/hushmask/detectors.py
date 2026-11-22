@@ -120,7 +120,8 @@ def default_detectors() -> list[Detector]:
         PatternDetector(
             "email",
             EntityType.EMAIL,
-            re.compile(r"(?<![\w.+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?![\w-])"),
+            # \w, not A-Z: the evaluation found "anna.müller@web.de" and "grégori…@tutanota.com" leaking.
+            re.compile(r"(?<![\w.+-])[\w.%+-]+@[\w-]+(?:\.[\w-]+)*\.[^\W\d_]{2,}(?![\w-])"),
             PRIORITY_FORMAT,
         ),
         # UPI handles look like emails without a dot after the @: name@okhdfcbank
@@ -201,5 +202,14 @@ def default_detectors() -> list[Detector]:
             re.compile(r"(?<![\d+])0\d{2,4}[ -]\d{3,4}[ -]?\d{3,4}(?!\d)"),
             PRIORITY_LOOSE,
             v.digit_count(10, 11),
+        ),
+        # Other national formats seen in the evaluation: "(776) 5008567", "0296 69224164", "0044 92003-6685",
+        # "0167 29.907.3017". Must start with a trunk 0 or a bracketed area code; dates are rejected.
+        PatternDetector(
+            "phone-national-loose",
+            EntityType.PHONE,
+            re.compile(r"(?<![\w+.(])(?:\(\d{2,5}\)[ .-]?|0\d{1,4}[ .-]?)(?:\d{1,5}[ .-]?){1,4}\d{2,6}(?!\w)(?!\.\d)"),
+            PRIORITY_LOOSE,
+            v.all_of(v.digit_count(9, 14), v.not_date_like),
         ),
     ]
