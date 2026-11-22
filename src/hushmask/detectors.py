@@ -125,7 +125,10 @@ class KnownValuesDetector:
 
 
 def default_detectors() -> list[Detector]:
+    from .addresses import AddressDetector
+
     return [
+        AddressDetector(),
         PatternDetector(
             "email",
             EntityType.EMAIL,

@@ -31,6 +31,7 @@ export function Playground({ info }: { info: Info }) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [active, setActive] = useState<string | null>(null)
+  const [nerReady, setNerReady] = useState(false) // set once a preview with the model has come back
   const useNer = ner && info.ner.available
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export function Playground({ info }: { info: Info }) {
         if (!cancelled) {
           setPreview({ ...result, source: text })
           setError(null)
+          if (useNer) setNerReady(true)
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err))
@@ -93,11 +95,13 @@ export function Playground({ info }: { info: Info }) {
               disabled={!info.ner.available}
               label="Find names nobody listed"
               hint={
-                info.ner.available
-                  ? info.ner.loaded || !ner
-                    ? 'Runs a local model on this machine. Slower, catches third-party names.'
-                    : 'Loading the model. The first time takes a few seconds.'
-                  : 'Needs the model extra: uv sync --extra ner'
+                !info.ner.available
+                  ? 'Needs the model extra: uv sync --extra ner'
+                  : nerReady || info.ner.loaded
+                    ? 'Runs a local model on this machine. Catches names nobody listed.'
+                    : info.ner.cached
+                      ? 'Runs a local model on this machine. Takes a few seconds to load the first time.'
+                      : 'First use downloads the names model (about 0.6 GB, once) and can take a few minutes.'
               }
             />
           </div>
@@ -125,7 +129,11 @@ export function Playground({ info }: { info: Info }) {
               <span className="text-ink-soft">Checked in {current.took_ms} ms. Hover a token to find its source.</span>
             </p>
           ) : (
-            <p className="text-ink-soft">Checkingâ€¦</p>
+            <p className="text-ink-soft">
+              {useNer && !nerReady && !info.ner.cached
+                ? 'Downloading the names model (about 0.6 GB, only the first time)…'
+                : 'Checking…'}
+            </p>
           )}
           {text !== SAMPLE && (
             <button className="text-ink-soft underline hover:text-ink" onClick={() => setText(SAMPLE)}>

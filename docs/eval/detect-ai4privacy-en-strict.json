@@ -196,7 +196,7 @@
           "protected": 12
         }
       },
-      "false_positives": 200,
+      "false_positives": 201,
       "false_positive_examples": [
         "CARD: '143107573075638'",
         "LOCATION: 'ENG'",
@@ -214,7 +214,7 @@
       "keep_total": 0,
       "keep_damaged": 0,
       "keep_damaged_examples": [],
-      "ms_per_doc": 166.4
+      "ms_per_doc": 161.7
     }
   }
 }

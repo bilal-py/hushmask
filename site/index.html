@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>hushmask: tell the AI everything except who you are</title>
 <meta name="description" content="hushmask hides names, emails, phone numbers, IBANs and other personal details before your text reaches an AI, and puts them back in the answer. Runs on your machine." />
+<meta property="og:title" content="hushmask: tell the AI everything except who you are" />
+<meta property="og:description" content="Hide names, emails, IBANs and addresses before your text reaches an AI. Get them back in the answer. Open source, runs locally." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://bilal-py.github.io/hushmask/" />
+<meta property="og:image" content="https://bilal-py.github.io/hushmask/og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="hushmask: a sentence where the name, email, IBAN and address are replaced by tokens" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#1a2233" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23EEF1F5'/%3E%3Crect x='6' y='8' width='20' height='3' rx='1.5' fill='%2356607A'/%3E%3Crect x='6' y='14.5' width='20' height='4' rx='1' fill='%231A2233'/%3E%3Crect x='6' y='22' width='13' height='3' rx='1.5' fill='%2356607A'/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -97,6 +107,17 @@
   .specimen.taped .swap .hl { opacity: 0; }
   .specimen.taped .swap .tok { display: inline-flex; }
 
+  .reality { margin-top: 72px; background: var(--tape); color: var(--tape-text); }
+  .reality .wrap { padding-top: 56px; padding-bottom: 56px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: center; }
+  @media (max-width: 860px) { .reality .wrap { grid-template-columns: 1fr; gap: 24px; } }
+  .reality h2 { font-size: clamp(2rem, 4.4vw, 3.3rem); letter-spacing: -0.035em; }
+  .reality p { margin-top: 14px; font-size: 1.12rem; opacity: .82; max-width: 52ch; }
+  .reality ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .reality li { display: flex; align-items: baseline; gap: 14px; font-size: 1.15rem; font-weight: 700; }
+  .reality li span { font-weight: 400; opacity: .75; font-size: .98rem; }
+  .reality li i { flex: none; width: 34px; height: 12px; border-radius: 3px; background: var(--sw); transform: translateY(-1px); }
+  .play { display: inline-flex; align-items: center; gap: 8px; }
+  .play svg { width: 12px; height: 12px; }
   .demo-controls { display: grid; grid-template-columns: auto auto 1fr; gap: 28px; margin-top: 32px; align-items: start; }
   @media (max-width: 900px) { .demo-controls { grid-template-columns: 1fr; } }
   .hint { font-size: .9rem; color: var(--ink-soft); margin-top: 8px; max-width: 36ch; }
@@ -249,12 +270,29 @@
     </figure>
   </div>
 
+  <div class="reality" role="region" data-i18n-attr="aria-label:realityLabel" aria-label="Why it matters">
+    <div class="wrap">
+      <div>
+        <h2 data-i18n="realityTitle">Your prompts don't disappear.</h2>
+        <p data-i18n="realityText">Everything you paste into an AI is stored on someone else's server. Depending on the provider and plan, people may read it and it may train the next model. hushmask makes sure the names, numbers and addresses were never in it.</p>
+      </div>
+      <ul>
+        <li style="--sw:var(--hl-number)"><i></i><div><b data-i18n="r_logT">Kept in logs</b><br><span data-i18n="r_logD">Prompts are stored, often for weeks.</span></div></li>
+        <li style="--sw:var(--hl-person)"><i></i><div><b data-i18n="r_readT">Read by people</b><br><span data-i18n="r_readD">Reviews for safety and quality can include your text.</span></div></li>
+        <li style="--sw:var(--hl-contact)"><i></i><div><b data-i18n="r_trainT">Used for training</b><br><span data-i18n="r_trainD">On some plans, unless you opt out.</span></div></li>
+      </ul>
+    </div>
+  </div>
+
   <section id="try">
     <div class="wrap">
       <h2 data-i18n="tryTitle">See what the AI gets.</h2>
       <p class="lede" data-i18n="tryLede">Pick an example or paste your own text. Highlighted values never leave your machine; the right side is exactly what an AI provider would receive. This demo runs in your browser with hushmask's pattern rules. Nothing is sent anywhere.</p>
 
-      <div class="scenarios" id="scenarios" role="group" data-i18n-attr="aria-label:scenariosLabel" aria-label="Examples"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:28px">
+        <div class="scenarios" id="scenarios" role="group" data-i18n-attr="aria-label:scenariosLabel" aria-label="Examples" style="margin-top:0"></div>
+        <button class="btn small play" id="play" type="button"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 1l9 5-9 5z" fill="currentColor"/></svg><span data-i18n="playLive">Watch it live</span></button>
+      </div>
 
       <div class="demo-controls">
         <div>
@@ -273,7 +311,7 @@
             <button class="btn" type="submit" data-i18n="add">Add</button>
           </form>
         </div>
-        <p class="hint" style="max-width:44ch;margin-top:28px" data-i18n="namesHint">Names and addresses nobody listed need the local names model that comes with hushmask; patterns alone can't know a word is a name. In this demo, add them to "Always hide" and watch them disappear.</p>
+        <p class="hint" style="max-width:44ch;margin-top:28px" data-i18n="namesHint">Names nobody listed (like "Mia Schulz" in the support ticket) need the local names model that comes with hushmask; patterns alone can't know a word is a name. In this demo, add them to "Always hide" and watch them disappear.</p>
       </div>
 
       <div class="panes">
@@ -336,7 +374,7 @@
         <div class="kind" style="--sw:var(--hl-person)"><h3><i></i><span data-i18n="k1t">People</span></h3><p data-i18n="k1d">Names from your "always hide" list, and anyone else's from a local names model. "Mr Becker" links to "Jonas Becker", so the AI knows it's the same person.</p></div>
         <div class="kind" style="--sw:var(--hl-contact)"><h3><i></i><span data-i18n="k2t">Ways to reach you</span></h3><p data-i18n="k2d">Email addresses, including ones like anna.müller@…, and phone numbers in international and national formats.</p></div>
         <div class="kind" style="--sw:var(--hl-number)"><h3><i></i><span data-i18n="k3t">Numbers that identify you</span></h3><p data-i18n="k3d">IBANs and card numbers, checked with their checksums so random numbers are left alone, and account numbers next to a label. Indian ID formats too.</p></div>
-        <div class="kind" style="--sw:var(--hl-place)"><h3><i></i><span data-i18n="k4t">Where you live</span></h3><p data-i18n="k4d">Street addresses from your list or the names model. Cities in the strict preset only.</p></div>
+        <div class="kind" style="--sw:var(--hl-place)"><h3><i></i><span data-i18n="k4t">Where you live</span></h3><p data-i18n="k4d">Street addresses as German, Dutch, French, Italian, Spanish, US, UK and Australian write them, plus anything the names model finds. Cities in the strict preset only.</p></div>
       </div>
       <p class="keeps" data-i18n="keeps"><b>Same value, same token, every time.</b> A whole conversation stays consistent, the AI can refer back to "PERSON_4aee58", and the provider's prompt cache keeps working.</p>
     </div>
@@ -377,7 +415,7 @@ uv run hushmask serve --open</pre>
           <ol class="steps">
             <li data-i18n="st1"><b>Playground:</b> paste any text and see what an AI would get.</li>
             <li data-i18n="st2"><b>Apps:</b> add one, pick a provider (Ollama keeps everything local), copy its URL and key.</li>
-            <li data-i18n="st3"><b>Names model:</b> run the setup with <code>-Names</code> (Windows) or <code>--names</code> to also catch names nobody listed. About 1.7 GB.</li>
+            <li data-i18n="st3"><b>Names model:</b> run the setup with <code>-Names</code> (Windows) or <code>--names</code> to also catch names nobody listed. About 0.6 GB, runs on any laptop CPU.</li>
           </ol>
         </div>
         <div>
@@ -435,6 +473,7 @@ print(reply.choices[0].message.content)  <span class="c"># real names back</span
   </div>
 </footer>
 
+<script src="detect.js"></script>
 <script>
 // =============================================================================================
 // Translations. English lives in the HTML (read on load); German is here.
@@ -445,11 +484,18 @@ const DE = {
   heroTitle: 'Erzähl der KI alles, außer wer du bist.',
   heroLede: 'hushmask verbirgt Namen, E-Mail-Adressen, Telefonnummern, IBANs und andere persönliche Daten, bevor dein Text eine KI erreicht, und setzt sie in der Antwort wieder ein. Es läuft auf deinem Rechner, und jede App, die eine OpenAI-kompatible API nutzt, kann es verwenden, indem sie eine URL ändert.',
   heroTry: 'Im Browser ausprobieren', heroRun: 'Selbst starten',
+  realityLabel: 'Warum das wichtig ist',
+  realityTitle: 'Deine Prompts verschwinden nicht.',
+  realityText: 'Alles, was du in eine KI einfügst, liegt auf dem Server eines anderen. Je nach Anbieter und Tarif können Menschen mitlesen und das nächste Modell daraus lernen. hushmask sorgt dafür, dass Namen, Nummern und Adressen nie darin standen.',
+  r_logT: 'In Logs gespeichert', r_logD: 'Prompts werden aufbewahrt, oft wochenlang.',
+  r_readT: 'Von Menschen gelesen', r_readD: 'Prüfungen für Sicherheit und Qualität können deinen Text einschließen.',
+  r_trainT: 'Fürs Training genutzt', r_trainD: 'Bei manchen Tarifen, solange du nicht widersprichst.',
+  playLive: 'Live ansehen',
   tryTitle: 'Sieh, was die KI bekommt.',
   tryLede: 'Wähle ein Beispiel oder füge eigenen Text ein. Markierte Werte verlassen deinen Rechner nie; rechts steht genau das, was ein KI-Anbieter erhalten würde. Diese Demo läuft in deinem Browser mit den Muster-Regeln von hushmask. Es wird nichts gesendet.',
   scenariosLabel: 'Beispiele', presetLabel: 'Was verbergen', strict: 'Streng', finance: 'Finanzen',
   alwaysHide: 'Immer verbergen', addPlaceholder: 'Namen hinzufügen', add: 'Hinzufügen',
-  namesHint: 'Namen und Adressen, die niemand eingetragen hat, braucht das lokale Namensmodell von hushmask; Muster allein können nicht wissen, dass ein Wort ein Name ist. Trag sie in dieser Demo unter „Immer verbergen“ ein und sieh zu, wie sie verschwinden.',
+  namesHint: 'Für Namen, die niemand eingetragen hat (wie „Mia Schulz“ im Support-Ticket), braucht es das lokale Namensmodell von hushmask; Muster allein können nicht wissen, dass ein Wort ein Name ist. Trag sie in dieser Demo unter „Immer verbergen“ ein und sieh zu, wie sie verschwinden.',
   yourText: 'Dein Text', aiReceives: 'Was die KI bekommt',
   lgPeople: 'Personen', lgNumbers: 'IBAN-, Karten- und Ausweisnummern', lgContact: 'E-Mail und Telefon', lgPlaces: 'Adressen und Orte',
   usesTitle: 'Nutze Cloud-KI für die Texte, die du wirklich hast.',
@@ -465,7 +511,7 @@ const DE = {
   k1t: 'Personen', k1d: 'Namen aus deiner Liste „Immer verbergen“ und alle anderen über ein lokales Namensmodell. „Herr Becker“ wird mit „Jonas Becker“ verknüpft, damit die KI weiß, dass es dieselbe Person ist.',
   k2t: 'Wege, dich zu erreichen', k2d: 'E-Mail-Adressen, auch solche wie anna.müller@…, und Telefonnummern in internationalen und nationalen Formaten.',
   k3t: 'Nummern, die dich identifizieren', k3d: 'IBANs und Kartennummern, geprüft über ihre Prüfsummen, damit zufällige Zahlen stehen bleiben, und Kontonummern neben einer Bezeichnung. Auch indische Ausweisformate.',
-  k4t: 'Wo du wohnst', k4d: 'Straßenadressen aus deiner Liste oder über das Namensmodell. Städte nur in der strengen Voreinstellung.',
+  k4t: 'Wo du wohnst', k4d: 'Straßenadressen so, wie man sie in Deutschland, den Niederlanden, Frankreich, Italien, Spanien, den USA, Großbritannien und Australien schreibt, plus alles, was das Namensmodell findet. Städte nur in der strengen Voreinstellung.',
   keeps: '<b>Gleicher Wert, gleicher Platzhalter, jedes Mal.</b> Ein ganzes Gespräch bleibt stimmig, die KI kann sich auf „PERSON_4aee58“ beziehen, und der Prompt-Cache des Anbieters funktioniert weiter.',
   resTitle: 'Gemessen, nicht versprochen.',
   resLede: '„Privacy-first“ ist schnell gesagt. Die Balken zeigen den Anteil persönlicher Werte, die auf gelabelten Daten vollständig verborgen wurden, für jede Variante, auch die, die schlecht aussehen.',
@@ -475,7 +521,7 @@ const DE = {
   copy: 'Kopieren',
   st1: '<b>Playground:</b> beliebigen Text einfügen und sehen, was eine KI bekäme.',
   st2: '<b>Apps:</b> eine anlegen, Anbieter wählen (mit Ollama bleibt alles lokal), URL und Schlüssel kopieren.',
-  st3: '<b>Namensmodell:</b> Setup mit <code>-Names</code> (Windows) oder <code>--names</code> starten, um auch nicht eingetragene Namen zu finden. Etwa 1,7 GB.',
+  st3: '<b>Namensmodell:</b> Setup mit <code>-Names</code> (Windows) oder <code>--names</code> starten, um auch nicht eingetragene Namen zu finden. Etwa 0,6 GB, läuft auf jeder Laptop-CPU.',
   sdkTitle: 'Jeden OpenAI-Client darauf zeigen lassen',
   providers: 'Funktioniert mit OpenAI, Gemini, Ollama, OpenRouter, Groq und allem, was die OpenAI-Chat-API spricht.',
   rulesTitle: 'Regeln ohne Ausnahme.',
@@ -617,16 +663,20 @@ const RESULTS = {
       rows: [['Patterns only', 26.5], ['+ local names model', 87.0]] },
     { title: 'Everyday German text (ai4privacy, 300 records)', sub: 'The same in German. 106 ordinary words were masked with the names model on, mostly capitalized words like "Hallo".',
       rows: [['Patterns only', 25.6], ['+ local names model', 90.0]] },
-    { title: 'Bank statements (synthetic, 300 statements)', sub: 'Generated by this project, so it flatters the patterns. Not one of 1,396 merchant names was touched.',
-      rows: [['Patterns only', 50.6], ['+ your name and address', 73.0], ['+ local names model', 99.4]] },
+    { title: 'Bank statements (synthetic, 300 statements)', sub: 'Generated by this project, so it flatters the patterns. 1 of 1,340 merchant names was touched ("OLA CABS" looks like a name).',
+      rows: [['Patterns only', 57.6], ['+ your name and address', 72.9], ['+ local names model', 99.5]] },
+    { title: 'Does the AI still do the job? (categorization accuracy)', sub: 'A local qwen2.5:7b sorted 52 transactions into categories, once seeing everything and once seeing only tokens. One transaction apart, which is noise at this size. Every person\'s name came back correctly.',
+      rows: [['AI sees real data', 94.2], ['AI sees hushmask tokens', 92.3]] },
   ],
   de: [
     { title: 'Englische Alltagstexte (ai4privacy, 500 Datensätze)', sub: 'E-Mails, Formulare und Briefe, auf die hushmask nie abgestimmt wurde. Mit Namensmodell wurden auch 200 gewöhnliche Wörter maskiert („Volunteer“, „Parent“).',
       rows: [['Nur Muster', 26.5], ['+ lokales Namensmodell', 87.0]] },
     { title: 'Deutsche Alltagstexte (ai4privacy, 300 Datensätze)', sub: 'Dasselbe auf Deutsch. Mit Namensmodell wurden 106 gewöhnliche Wörter maskiert, meist großgeschriebene Wörter wie „Hallo“.',
       rows: [['Nur Muster', 25.6], ['+ lokales Namensmodell', 90.0]] },
-    { title: 'Kontoauszüge (synthetisch, 300 Auszüge)', sub: 'Von diesem Projekt erzeugt, schmeichelt also den Mustern. Keiner der 1.396 Händlernamen wurde angetastet.',
-      rows: [['Nur Muster', 50.6], ['+ dein Name und deine Adresse', 73.0], ['+ lokales Namensmodell', 99.4]] },
+    { title: 'Kontoauszüge (synthetisch, 300 Auszüge)', sub: 'Von diesem Projekt erzeugt, schmeichelt also den Mustern. 1 von 1.340 Händlernamen wurde angetastet („OLA CABS“ sieht aus wie ein Name).',
+      rows: [['Nur Muster', 57.6], ['+ dein Name und deine Adresse', 72.9], ['+ lokales Namensmodell', 99.5]] },
+    { title: 'Erledigt die KI ihre Aufgabe noch? (Genauigkeit beim Kategorisieren)', sub: 'Ein lokales qwen2.5:7b hat 52 Buchungen in Kategorien sortiert, einmal mit allen Daten und einmal nur mit Platzhaltern. Eine Buchung Unterschied, bei dieser Größe Zufall. Jeder Personenname kam korrekt zurück.',
+      rows: [['KI sieht echte Daten', 94.2], ['KI sieht hushmask-Platzhalter', 92.3]] },
   ],
 };
 const CAVEATS = {
@@ -634,90 +684,17 @@ const CAVEATS = {
     'Bars show values <b>fully</b> hidden. Half a surname or part of a card number counts as leaked.',
     'Most leaks on ai4privacy are card numbers that are random digits failing the card checksum (left alone on purpose), and street addresses. Usernames, passwords, dates of birth and ID numbers aren\'t detected; they\'re reported separately, not hidden in the totals.',
     'The first run found accented emails (anna.müller@…) and several national phone formats leaking. Both were fixed and measured again; these are the numbers after the fix.',
+    'The names model runs on ONNX (0.6 GB). It gave exactly the same results as the original 1.8 GB PyTorch setup on every test text.',
     'Full tables, method and the commands to reproduce: <a href="https://github.com/bilal-py/hushmask/blob/main/docs/eval/RESULTS.md">docs/eval/RESULTS.md</a>.',
   ],
   de: [
     'Die Balken zeigen <b>vollständig</b> verborgene Werte. Ein halber Nachname oder ein Teil einer Kartennummer zählt als durchgesickert.',
     'Die meisten Lücken bei ai4privacy sind Kartennummern aus Zufallsziffern, die die Prüfsumme nicht bestehen (absichtlich ignoriert), und Straßenadressen. Benutzernamen, Passwörter, Geburtsdaten und Ausweisnummern werden nicht erkannt; sie werden getrennt ausgewiesen, nicht in den Summen versteckt.',
     'Der erste Durchlauf fand E-Mails mit Umlauten (anna.müller@…) und mehrere nationale Telefonformate, die durchrutschten. Beides wurde behoben und neu gemessen; das hier sind die Zahlen danach.',
+    'Das Namensmodell läuft mit ONNX (0,6 GB). Auf jedem Testtext lieferte es genau dieselben Ergebnisse wie das ursprüngliche PyTorch-Setup mit 1,8 GB.',
     'Vollständige Tabellen, Methode und Befehle zum Nachmessen: <a href="https://github.com/bilal-py/hushmask/blob/main/docs/eval/RESULTS.md">docs/eval/RESULTS.md</a>.',
   ],
 };
-
-// =============================================================================================
-// A small port of hushmask's pattern rules (src/hushmask/detectors.py), so the demo needs no server.
-// The real thing adds a names model, HMAC tokens and a leak check.
-// =============================================================================================
-const digits = (s) => s.replace(/\D/g, '');
-function luhn(s) {
-  const n = digits(s); if (n.length < 13 || n.length > 19) return false;
-  let sum = 0;
-  for (let i = 0; i < n.length; i++) { let d = +n[n.length - 1 - i]; if (i % 2) { d *= 2; if (d > 9) d -= 9; } sum += d; }
-  return sum % 10 === 0;
-}
-function iban(s) {
-  const c = s.replace(/[^0-9A-Za-z]/g, '').toUpperCase(); if (c.length < 15 || c.length > 34) return false;
-  let rem = 0;
-  for (const ch of c.slice(4) + c.slice(0, 4)) for (const d of String(parseInt(ch, 36))) rem = (rem * 10 + +d) % 97;
-  return rem === 1;
-}
-const VD = [[0,1,2,3,4,5,6,7,8,9],[1,2,3,4,0,6,7,8,9,5],[2,3,4,0,1,7,8,9,5,6],[3,4,0,1,2,8,9,5,6,7],[4,0,1,2,3,9,5,6,7,8],[5,9,8,7,6,0,4,3,2,1],[6,5,9,8,7,1,0,4,3,2],[7,6,5,9,8,2,1,0,4,3],[8,7,6,5,9,3,2,1,0,4],[9,8,7,6,5,4,3,2,1,0]];
-const VP = [[0,1,2,3,4,5,6,7,8,9],[1,5,7,6,2,8,3,0,9,4],[5,8,0,3,7,9,6,1,4,2],[8,9,1,6,0,4,3,5,2,7],[9,4,5,3,1,2,6,8,7,0],[4,2,8,6,5,7,3,9,0,1],[2,7,9,3,8,0,6,4,1,5],[7,0,4,6,9,1,3,2,5,8]];
-function aadhaar(s) { const n = digits(s); if (n.length !== 12 || '01'.includes(n[0])) return false; let c = 0; [...n].reverse().forEach((d, i) => { c = VD[c][VP[i % 8][+d]]; }); return c === 0; }
-const count = (lo, hi) => (s) => { const n = digits(s).length; return n >= lo && n <= hi; };
-const notDate = (s) => !/(?<!\d)\d{1,4}[./-]\d{1,2}[./-]\d{1,4}(?!\d)/.test(s);
-const ipv4 = (s) => s.split('.').every((p) => String(+p) === p && +p <= 255);
-
-const RULES = [
-  { type: 'EMAIL', p: 40, re: /(?<![\p{L}\p{N}_.+-])[\p{L}\p{N}_.%+-]+@[\p{L}\p{N}_-]+(?:\.[\p{L}\p{N}_-]+)*\.\p{L}{2,}(?![\p{L}\p{N}_-])/gu },
-  { type: 'UPI', p: 40, re: /(?<![\w.+-])[A-Za-z0-9._-]{2,}@[A-Za-z]{2,}(?![\w@-])(?!\.[A-Za-z0-9])/g },
-  { type: 'CARD', p: 50, re: /(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)/g, ok: luhn },
-  { type: 'IBAN', p: 50, re: /\b[A-Z]{2}\d{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,3})?\b/g, ok: iban },
-  { type: 'AADHAAR', p: 50, re: /(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)/g, ok: aadhaar },
-  { type: 'PAN', p: 40, re: /\b[A-Z]{3}[ABCFGHJLPT][A-Z]\d{4}[A-Z]\b/g },
-  { type: 'IFSC', p: 40, re: /\b[A-Z]{4}0[A-Z0-9]{6}\b/g },
-  { type: 'ACCOUNT', p: 60, re: /\b(?:a\/c|acct|account|kontonummer|konto-?nr\.?|konto)(?:\s*(?:no\.?|number|num|#))?\s*[:.#-]?\s*([X*\d][\dX* -]{4,22}\d)/dgi, group: 1 },
-  { type: 'IP', p: 40, re: /(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])/g, ok: ipv4 },
-  { type: 'PHONE', p: 30, re: /(?<![\w+])\+\d{1,3}(?:[ .-]?(?:\(\d{1,5}\)|\d{1,5})){2,5}(?!\d)/g, ok: count(8, 15) },
-  { type: 'PHONE', p: 30, re: /(?<![\d+])0?[6-9]\d{4}[ -]?\d{5}(?!\d)/g },
-  { type: 'PHONE', p: 30, re: /(?<![\d+])0\d{2,4}[ -]\d{3,4}[ -]?\d{3,4}(?!\d)/g, ok: count(10, 11) },
-  { type: 'PHONE', p: 30, re: /(?<![\w+.(])(?:\(\d{2,5}\)[ .-]?|0\d{1,4}[ .-]?)(?:\d{1,5}[ .-]?){1,4}\d{2,6}(?!\w)(?!\.\d)/g, ok: (s) => count(9, 14)(s) && notDate(s) },
-];
-const KEPT = { strict: new Set(), finance: new Set(['IFSC', 'IP', 'LOCATION']) };
-const FAMILY = { PERSON: 'person', ADDRESS: 'place', LOCATION: 'place', EMAIL: 'contact', PHONE: 'contact', UPI: 'contact', IP: 'contact', CARD: 'number', IBAN: 'number', ACCOUNT: 'number', AADHAAR: 'number', PAN: 'number', IFSC: 'number' };
-const sw = (t) => `var(--hl-${FAMILY[t] || 'custom'})`;
-const SALT = Math.random().toString(36).slice(2);
-
-function tokenFor(type, value) {
-  const norm = type === 'PHONE' ? digits(value).slice(-10) : ['CARD', 'IBAN', 'ACCOUNT', 'AADHAAR'].includes(type) ? value.replace(/[^0-9A-Za-z]/g, '').toUpperCase() : value.trim().replace(/\s+/g, ' ').toLowerCase();
-  let h = 0x811c9dc5;
-  for (const ch of `${SALT}:${type}:${norm}`) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
-  return `${type}_${h.toString(16).padStart(8, '0').slice(0, 6)}`;
-}
-
-function detect(text, preset, known) {
-  const found = [];
-  const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
-  const words = new Set();
-  for (const k of known) { words.add(k); for (const part of k.split(/\s+/)) if (part.length >= 3) words.add(part); }
-  if (words.size) {
-    const re = new RegExp(`(?<![\\p{L}\\p{N}_])(?:${[...words].sort((a, b) => b.length - a.length).map(escape).join('|')})(?![\\p{L}\\p{N}_])`, 'giu');
-    for (const m of text.matchAll(re)) found.push({ type: 'PERSON', start: m.index, end: m.index + m[0].length, p: 100 });
-  }
-  for (const r of RULES) {
-    if (KEPT[preset].has(r.type)) continue;
-    for (const m of text.matchAll(r.re)) {
-      const value = r.group ? m[r.group] : m[0];
-      if (!value || (r.ok && !r.ok(value))) continue;
-      const [start, end] = r.group ? m.indices[r.group] : [m.index, m.index + m[0].length];
-      found.push({ type: r.type, start, end, p: r.p });
-    }
-  }
-  found.sort((a, b) => (b.end - b.start) - (a.end - a.start) || b.p - a.p || a.start - b.start);
-  const chosen = [];
-  for (const f of found) if (!chosen.some((c) => f.start < c.end && c.start < f.end)) chosen.push(f);
-  return chosen.sort((a, b) => a.start - b.start).map((f) => ({ ...f, text: text.slice(f.start, f.end), token: tokenFor(f.type, text.slice(f.start, f.end)) }));
-}
 
 // =============================================================================================
 // Page state, language and theme
@@ -729,7 +706,7 @@ const state = { lang: document.documentElement.lang, scenario: 'email', preset: 
 const t = () => T[state.lang];
 
 function applyLanguage(lang) {
-  state.lang = lang; document.documentElement.lang = lang; save('hm-lang', lang);
+  stopTyping(); state.lang = lang; document.documentElement.lang = lang; save('hm-lang', lang);
   const dict = lang === 'de' ? DE : EN;
   document.querySelectorAll('[data-i18n]').forEach((el) => { const v = dict[el.dataset.i18n] ?? EN[el.dataset.i18n]; if (v !== undefined) el.innerHTML = v; });
   document.querySelectorAll('[data-i18n-attr]').forEach((el) => {
@@ -782,6 +759,7 @@ function renderScenarios() {
   $('scenarios').innerHTML = Object.entries(SCENARIOS).map(([id, s]) => `<button type="button" data-scenario="${id}" aria-pressed="${id === state.scenario && !state.edited}">${s.label[state.lang]}</button>`).join('');
 }
 function loadScenario(id) {
+  stopTyping();
   const s = SCENARIOS[id];
   state.scenario = id; state.edited = false; state.known = [...s.known]; state.preset = s.preset || 'strict';
   textEl.value = s.text[state.lang];
@@ -837,6 +815,34 @@ new IntersectionObserver((entries, obs) => {
   setTimeout(() => setSpecimen(true), still ? 0 : 1500);
 }, { threshold: 0.6 }).observe(spec);
 $('specimen-toggle').addEventListener('click', () => { spec.classList.add('marked'); setSpecimen(!state.taped); });
+
+// =============================================================================================
+// Live demo: type the example out and let hushmask tape values the moment they're complete
+// =============================================================================================
+let typing = null;
+function stopTyping(finish = false) {
+  if (!typing) return;
+  clearInterval(typing); typing = null;
+  if (finish) { textEl.value = SCENARIOS[state.scenario].text[state.lang]; render(); }
+}
+function play() {
+  stopTyping();
+  const full = SCENARIOS[state.scenario].text[state.lang];
+  state.edited = false; renderScenarios();
+  if (still) { textEl.value = full; render(); return; }
+  let i = 0; textEl.value = ''; render();
+  typing = setInterval(() => {
+    i = Math.min(full.length, i + 2);
+    textEl.value = full.slice(0, i); render();
+    if (i >= full.length) stopTyping();
+  }, 22);
+}
+$('play').addEventListener('click', play);
+textEl.addEventListener('pointerdown', () => stopTyping(true));
+textEl.addEventListener('keydown', () => stopTyping(true));
+new IntersectionObserver((entries, obs) => {
+  if (!entries[0].isIntersecting) return; obs.disconnect(); play();
+}, { threshold: 0.5 }).observe(document.querySelector('.panes'));
 
 // =============================================================================================
 // Journey stepper

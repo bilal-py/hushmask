@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-step setup on macOS/Linux:  ./setup.sh        (add --names for the local names model, ~1.7 GB)
+# One-step setup on macOS/Linux:  ./setup.sh        (add --names for the local names model, ~0.6 GB)
 # Then:                            uv run hushmask serve --open
 set -euo pipefail
 

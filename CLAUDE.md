@@ -11,7 +11,7 @@ uv run pytest
 uv run ruff check . && uv run ruff format .
 uv run hushmask --help
 
-# model-based detection (optional extra; ~1.7 GB with the model)
+# model-based detection (optional extra: onnxruntime + ~0.6 GB fp16 model; `ner-torch` = PyTorch fallback)
 uv sync --extra ner
 HUSHMASK_MODEL_TESTS=1 uv run --extra ner pytest -k real
 
@@ -63,8 +63,10 @@ npm run lint
   `~/.cache/hushmask`, never commit the data: licence forbids redistribution), `detection.py` (setups:
   patterns → + your list → + names model), `task.py` (AI accuracy with/without masking), `report.py`
   (rebuilds `docs/eval/RESULTS.md` from the JSON files there).
-- `site/index.html`: the self-contained project page. Its demo is a JS port of the pattern rules in
-  `detectors.py`; when a pattern changes, change it there too.
+- `site/`: the project page (`index.html`, EN/DE, light/dark), `og.png` (social preview) and `detect.js`, a JS
+  port of `detectors.py` + `addresses.py` for the in-browser demo. When a pattern changes, change `detect.js`
+  too; `tests/test_site_sync.py` runs it with Node and fails if it disagrees with Python.
+- `onnx_ner.py`: GLiNER on onnxruntime (default `ner` extra, fp16 model). `addresses.py`: street-address patterns.
 
 ## Evaluation loop
 

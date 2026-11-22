@@ -12,7 +12,7 @@ export interface Info {
   mode: Mode
   editable: boolean
   store_path: string | null
-  ner: { available: boolean; loaded: boolean; model: string }
+  ner: { available: boolean; loaded: boolean; cached: boolean; model: string }
   presets: Record<string, string[]>
   entity_types: string[]
   upstreams: Upstream[]

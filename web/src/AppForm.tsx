@@ -188,7 +188,13 @@ export function AppForm({
           onChange={setNer}
           disabled={!info.ner.available}
           label="Find names nobody listed"
-          hint={info.ner.available ? 'Local model, adds a moment per request.' : 'Needs: uv sync --extra ner'}
+          hint={
+            !info.ner.available
+              ? 'Needs: uv sync --extra ner'
+              : info.ner.cached
+                ? 'Local model, adds a moment per request.'
+                : 'Local model. Saving downloads it once (about 0.6 GB), which can take a few minutes.'
+          }
         />
         <Toggle
           checked={allowImages}

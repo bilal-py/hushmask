@@ -1,0 +1,32 @@
+{
+  "model": "qwen2.5:7b",
+  "statements": 8,
+  "conditions": {
+    "without hushmask": {
+      "transactions": 52,
+      "category_accuracy": 0.9423,
+      "people_named_correctly": 1.0,
+      "statements_with_wrong_count": 0,
+      "top_mistakes": {
+        "Travel → Transport": 1,
+        "Refund → Income": 1,
+        "Travel → Transfer": 1
+      },
+      "seconds_per_statement": 39.2
+    },
+    "with hushmask": {
+      "transactions": 52,
+      "category_accuracy": 0.9231,
+      "people_named_correctly": 1.0,
+      "statements_with_wrong_count": 0,
+      "top_mistakes": {
+        "Shopping → Groceries": 1,
+        "Travel → Transport": 1,
+        "Subscriptions → Shopping": 1,
+        "Travel → Transfer": 1
+      },
+      "seconds_per_statement": 40.5
+    }
+  },
+  "ner": true
+}

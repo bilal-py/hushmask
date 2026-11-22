@@ -72,15 +72,15 @@ Presidio, LLM Guard, Private AI and others already cover parts of this.
 
 Ordered by value for effort. None of these remove a feature.
 
-- **Smaller, faster names model:** export GLiNER to ONNX and run it with onnxruntime. Likely cuts the ~1.7 GB
-  install to a few hundred MB and halves CPU time, and fixes the out-of-memory run. Keep PyTorch as a fallback.
+- ~~**Smaller, faster names model**~~ **done:** ONNX fp16 via onnxruntime, ~0.7 GB total instead of ~1.8 GB,
+  identical entities to PyTorch on 63/63 test texts, ~1.3x faster. PyTorch kept as `ner-torch`.
+- ~~**Address patterns**~~ **done:** DE/NL/FR/IT/ES and US/UK/AU formats. Note: ai4privacy labels mostly
+  address *fragments* ("Gaskell Road", "975"), which patterns deliberately don't chase; the model covers those.
 - **One-line install:** publish to PyPI (`uv tool install hushmask[proxy]`) with the dashboard in the wheel, and
   a Docker image (`docker run -p 8700:8700 hushmask`). The release workflow already builds the wheel.
 - **Fewer false names:** require a higher score (~0.75) for single-word names, and skip capitalized words at the
   start of a line/sentence that the model only scores weakly ("Hallo", "Volunteer"). Measure with
   `hushmask eval detect --dataset ai4privacy --ner` before keeping it.
-- **Address patterns:** German/EU street formats ("Bergstraße 12, 10115 Berlin", "Rue de Rivoli 5") as a
-  pattern, so addresses don't depend on the model. Addresses are the biggest remaining leak on English text.
 - **More EU identifiers with checksums:** German tax ID (Steuer-ID), Dutch BSN, French INSEE, Spanish DNI/NIE,
   passport numbers. Same approach as IBAN: pattern + checksum, so no over-masking.
 - **Case-insensitive `ß`:** "WEISS" doesn't match a listed "Weiß" (Python's IGNORECASE doesn't map ß↔SS).
@@ -96,8 +96,9 @@ Ordered by value for effort. None of these remove a feature.
 - **Dashboard:** hover from source text to token too (render the editor's marks as hit targets), and a
   "copy masked text" button for people who paste into chat UIs by hand.
 - **Request limits:** a max body size and a per-app rate limit, so a runaway client can't exhaust memory.
-- **Site demo in sync with Python:** a CI test that runs the same sample texts through the JS port and the Python
-  detectors and fails if they disagree.
+- ~~**Site demo in sync with Python**~~ **done:** `site/detect.js` + `tests/test_site_sync.py` (runs it with Node).
+- ~~**Social preview image**~~ **done:** `site/og.png` with Open Graph / Twitter tags.
+- ~~**First-run download notice**~~ **done:** dashboard and CLI say the names model downloads once (~0.6 GB).
 
 ## Decision log
 
@@ -145,3 +146,9 @@ Ordered by value for effort. None of these remove a feature.
 | 2026-11-22 | Site: EN/DE and light/dark switches, language from the browser, both remembered | European audience; follows the dashboard's design |
 | 2026-11-22 | CI: tests + lint on Ubuntu and Windows (Python 3.12/3.13), dashboard build; Pages deploys `site/`; tags `v*` publish a wheel with the dashboard | Easy install without Node for testers; names model left out of CI (tests use a fake model) |
 | 2026-11-22 | `setup.ps1` / `setup.sh` + `hushmask serve --open` | One command to install, one to run |
+| 2026-11-22 | Names model runs on ONNX by default (`onnx-community/gliner_multi_pii-v1`, fp16) with our own pre/post-processing; PyTorch is the `ner-torch` extra | `gliner` always pulls PyTorch. Measured on 63 texts: fp32/fp16 identical to PyTorch; int8/uint8 miss almost everything; q4f16 53/63. fp16 = smallest exact one |
+| 2026-11-22 | Address patterns with conservative rules (street word + house number; ambiguous German suffixes need postcode + city; no "Dr"; Romance keywords capitalized; numbers not part of amounts) | Catch real full addresses with zero over-masking on statements; "Spring 2026", "via PayPal 10.99", "Platz 2" stay |
+| 2026-11-22 | Synthetic EU addresses written the way each country writes them | The old "12 Hauptstraße, Berlin 12345" format doesn't exist in Germany |
+| 2026-11-22 | AI-accuracy eval masks everything first, then unloads the names model before calling the LLM | The first run ran out of memory with both loaded |
+| 2026-11-22 | PyPI via trusted publishing from the release workflow; `hushmask[all]` extra | One-line install with no tokens stored in GitHub |
+| 2026-11-22 | Site: "Your prompts don't disappear" band (logs, human review, training; worded with "may"/"some plans") and a self-typing live demo | Explains the why in one glance; claims kept accurate across providers |

@@ -1,9 +1,9 @@
-import importlib.util
 import os
 
 import pytest
 
 from hushmask import EntityType, GlinerDetector, KnownValue, Masker, Policy
+from hushmask.ner import available as ner_available
 from hushmask.ner import chunks, model_view, trim_span
 
 
@@ -107,7 +107,7 @@ def test_model_names_link_to_known_full_name():
 
 
 real_model = pytest.mark.skipif(
-    importlib.util.find_spec("gliner") is None or os.environ.get("HUSHMASK_MODEL_TESTS") != "1",
+    not ner_available() or os.environ.get("HUSHMASK_MODEL_TESTS") != "1",
     reason="set HUSHMASK_MODEL_TESTS=1 and install the 'ner' extra to run real-model tests",
 )
 

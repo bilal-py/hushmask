@@ -61,7 +61,12 @@ async def info(request: Request) -> dict[str, Any]:
         "mode": rt.mode,
         "editable": rt.store.editable,
         "store_path": str(rt.store.path) if rt.store.path else None,
-        "ner": {"available": rt.ner.available, "loaded": rt.ner.loaded, "model": rt.ner.model_name},
+        "ner": {
+            "available": rt.ner.available,
+            "loaded": rt.ner.loaded,
+            "cached": rt.ner.cached,
+            "model": rt.ner.model_name,
+        },
         "presets": {name: sorted(types) for name, types in PRESETS.items()},
         "entity_types": [t.value for t in EntityType],
         "upstreams": UPSTREAMS,

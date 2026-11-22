@@ -1,4 +1,4 @@
-# One-step setup on Windows:  .\setup.ps1          (add -Names for the local names model, ~1.7 GB)
+# One-step setup on Windows:  .\setup.ps1          (add -Names for the local names model, ~0.6 GB)
 # Then:                        uv run hushmask serve --open
 param([switch]$Names)
 $ErrorActionPreference = "Stop"

@@ -40,7 +40,15 @@ CITIES_EU = ["BERLIN", "MUNICH", "PARIS", "AMSTERDAM", "MADRID", "MILAN"]
 BANKS_IN = ["HDFC BANK", "ICICI BANK", "STATE BANK OF INDIA", "AXIS BANK"]
 BANKS_EU = ["DEUTSCHE BANK", "ING", "BNP PARIBAS", "N26"]
 STREETS_IN = ["MG Road", "Linking Road", "Park Street", "Anna Salai", "Brigade Road"]
-STREETS_EU = ["Hauptstraße", "Rue de Rivoli", "Keizersgracht", "Calle Mayor", "Via Roma"]
+# Written the way each country writes them: name + number + postcode + city, or number + name for France.
+ADDRESSES_EU = [
+    "Hauptstraße {n}, {zip} Berlin",
+    "Lindenallee {n}, {zip} Köln",
+    "Keizersgracht {n}, 1015 CJ Amsterdam",
+    "{n} rue de Rivoli, 75001 Paris",
+    "Calle Mayor {n}, 28013 Madrid",
+    "Via Roma {n}, 00184 Roma",
+]
 UPI_BANKS = ["okhdfcbank", "ybl", "paytm", "oksbi", "okicici"]
 MAIL_HOSTS = ["gmail.com", "outlook.com", "corp.in", "web.de", "proton.me"]
 PERSON_LINES = [("SALARY", "Income"), ("RENT", "Rent"), ("REFUND", "Refund"), ("", "Transfer")]
@@ -83,10 +91,11 @@ def _statement(rng: random.Random) -> Doc:
     first, last = (FIRST_EU, LAST_EU) if eu else (FIRST_IN, LAST_IN)
     holder = f"{rng.choice(first)} {rng.choice(last)}"
     cities = CITIES_EU if eu else CITIES_IN
-    address = (
-        f"{rng.randint(1, 120)} {rng.choice(STREETS_EU if eu else STREETS_IN)}, "
-        f"{rng.choice(cities).title()} {rng.randint(10000, 99999) if eu else rng.randint(400001, 699999)}"
-    )
+    if eu:
+        address = rng.choice(ADDRESSES_EU).format(n=rng.randint(1, 120), zip=rng.randint(10000, 99999))
+    else:
+        street, city = rng.choice(STREETS_IN), rng.choice(cities).title()
+        address = f"{rng.randint(1, 120)} {street}, {city} {rng.randint(400001, 699999)}"
     b = _Builder()
 
     # header

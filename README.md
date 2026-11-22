@@ -14,9 +14,20 @@ The deposit goes to DE89 3704 0044 0532 0130 00  The deposit goes to IBAN_b55883
 The AI still understands the request; it just never learns who is involved. Any app that talks to an
 OpenAI-style API can use it by changing one URL.
 
-> **Status: early.** Text only. See [docs/PLAN.md](docs/PLAN.md) for the roadmap, known gaps and ideas.
+> **Status: early.** Text only. See [docs/PLAN.md](https://github.com/bilal-py/hushmask/blob/main/docs/PLAN.md)
+> for the roadmap, known gaps and ideas.
 
-## Quick start
+## Install
+
+```bash
+uv tool install "hushmask[all]"     # or: pipx install "hushmask[all]"
+hushmask serve --open               # dashboard at http://127.0.0.1:8700/dashboard/
+```
+
+`[all]` = proxy + dashboard + the names model (downloaded on first use, ~0.6 GB, runs on CPU). For a lighter
+install: `hushmask[proxy]` (no names model) or plain `hushmask` (library and CLI only).
+
+## From source
 
 ```powershell
 git clone https://github.com/bilal-py/hushmask && cd hushmask
@@ -41,14 +52,17 @@ uv run hushmask mask examples/email.txt --known "PERSON=Lena Hoffmann" --ner   #
 
 ## How well it works
 
-Share of personal values **fully** hidden on labelled data ([tables](docs/eval/RESULTS.md),
-[method](docs/eval/README.md)):
+Share of personal values **fully** hidden on labelled data ([tables](https://github.com/bilal-py/hushmask/blob/main/docs/eval/RESULTS.md),
+[method](https://github.com/bilal-py/hushmask/blob/main/docs/eval/README.md)):
 
 | Data | Patterns | + your list | + names model | Over-masking (best setup) |
 |---|---:|---:|---:|---|
 | ai4privacy English (500 everyday texts) | 26.5% | n/a | **87.0%** | 200 ordinary words |
 | ai4privacy German (300 everyday texts) | 25.6% | n/a | **90.0%** | 106 ordinary words |
-| Synthetic bank statements (300) | 50.6% | 73.0% | **99.4%** | none; 0 of 1,396 merchants touched |
+| Synthetic bank statements (300) | 57.6% | 72.9% | **99.5%** | 1 of 1,340 merchants ("OLA CABS") |
+
+**Does the AI still do the job?** A local `qwen2.5:7b` categorized 52 transactions: 94.2% correct seeing real
+data, 92.3% seeing only tokens (one transaction apart), and every person's name came back correctly.
 
 ai4privacy is the honest number; the synthetic statements were written by this project and flatter it. Most
 leaks are random-digit "card numbers" that fail the card checksum (left alone on purpose) and street addresses.
@@ -59,7 +73,8 @@ Usernames, passwords, dates of birth and ID numbers aren't detected; they're rep
 | Kind | How |
 |---|---|
 | Your own values (name, address, IDs) | your "always hide" list: whole words, any case |
-| Other people's names, street addresses, cities | local names model (GLiNER, optional, ~1.7 GB) |
+| Street addresses (DE/NL/FR/IT/ES, US/UK/AU formats) | patterns: street word + house number (+ postcode, city) |
+| Other people's names, free-form addresses, cities | local names model (GLiNER via ONNX, optional, ~0.6 GB) |
 | Email, phone (international and national formats) | patterns |
 | Card numbers, IBAN | checksums (Luhn, mod 97) |
 | Account numbers | next to "Account No." and similar |

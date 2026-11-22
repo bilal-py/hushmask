@@ -61,27 +61,40 @@ def evaluate(
     conditions = {"without hushmask": [], "with hushmask": []}
     timings = {name: 0.0 for name in conditions}
 
+    bodies = [
+        {
+            "model": model,
+            "temperature": 0,
+            "messages": [{"role": "system", "content": INSTRUCTION}, {"role": "user", "content": doc.text}],
+            "response_format": {"type": "json_schema", "json_schema": {"name": "categories", "schema": SCHEMA}},
+        }
+        for doc in docs
+    ]
+    # Mask everything first, then unload the names model, so it and a local LLM are never in memory together.
+    started = time.perf_counter()
+    masked_runs = []
+    for doc, body in zip(docs, bodies, strict=True):
+        masker = Masker(policy=Policy.preset("finance"), known=doc.known, extra_detectors=[ner] if ner else [])
+        masked_runs.append((masker, mask_request(body, masker)[0]))
+    timings["with hushmask"] += time.perf_counter() - started
+    if ner is not None and hasattr(ner, "_model"):
+        ner._model = None  # type: ignore[attr-defined]
+        import gc
+
+        gc.collect()
+
     with httpx.Client(timeout=timeout, headers=headers) as client:
-        for i, doc in enumerate(docs):
-            body = {
-                "model": model,
-                "temperature": 0,
-                "messages": [{"role": "system", "content": INSTRUCTION}, {"role": "user", "content": doc.text}],
-                "response_format": {"type": "json_schema", "json_schema": {"name": "categories", "schema": SCHEMA}},
-            }
-            for name in conditions:
-                started = time.perf_counter()
-                if name == "with hushmask":
-                    masker = Masker(
-                        policy=Policy.preset("finance"), known=doc.known, extra_detectors=[ner] if ner else []
-                    )
-                    masked, _ = mask_request(body, masker)
-                    response = client.post(url, json=masked).raise_for_status().json()
-                    response, _ = restore_response(response, masker)
-                else:
-                    response = client.post(url, json=body).raise_for_status().json()
-                timings[name] += time.perf_counter() - started
-                conditions[name].append(_parse(response))
+        for i, (body, (masker, masked)) in enumerate(zip(bodies, masked_runs, strict=True)):
+            started = time.perf_counter()
+            response = client.post(url, json=body).raise_for_status().json()
+            timings["without hushmask"] += time.perf_counter() - started
+            conditions["without hushmask"].append(_parse(response))
+
+            started = time.perf_counter()
+            response = client.post(url, json=masked).raise_for_status().json()
+            response, _ = restore_response(response, masker)
+            timings["with hushmask"] += time.perf_counter() - started
+            conditions["with hushmask"].append(_parse(response))
             progress(f"statement {i + 1}/{len(docs)}")
 
     results: dict[str, Any] = {"model": model, "statements": len(docs), "conditions": {}}

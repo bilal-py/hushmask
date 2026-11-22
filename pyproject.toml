@@ -1,7 +1,7 @@
 [project]
 name = "hushmask"
 version = "0.1.0"
-description = "Hide PII before text goes to an AI, and put the real values back after."
+description = "Hide names, emails, IBANs and addresses before text reaches an AI, and put them back in the answer."
 readme = "README.md"
 authors = [
     { name = "Bilal", email = "bilalrizvi2110@gmail.com" }
@@ -10,19 +10,46 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = []
+keywords = ["privacy", "pii", "llm", "openai", "proxy", "anonymization", "pseudonymization", "gdpr", "redaction"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Text Processing",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://bilal-py.github.io/hushmask/"
+Source = "https://github.com/bilal-py/hushmask"
+Issues = "https://github.com/bilal-py/hushmask/issues"
+Evaluation = "https://github.com/bilal-py/hushmask/blob/main/docs/eval/RESULTS.md"
 
 [project.scripts]
 hushmask = "hushmask.cli:main"
 
 [project.optional-dependencies]
+# everything most people want: the proxy + dashboard and the names model (ONNX, ~0.6 GB on first use)
+all = ["hushmask[proxy,ner]"]
 ner = [
-    "gliner>=0.2.30",
-    "protobuf>=7.36.2",
+    "numpy>=2.5.5",
+    "onnxruntime>=1.20",
+    "tokenizers>=0.20",
 ]
 proxy = [
     "fastapi>=0.165.0",
     "httpx>=0.28.1",
     "uvicorn[standard]>=0.54.0",
+]
+ner-torch = [
+    "gliner>=0.2.30",
+    "protobuf>=7.36.2",
 ]
 
 [build-system]

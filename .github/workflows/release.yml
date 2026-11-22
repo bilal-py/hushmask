@@ -1,19 +1,26 @@
 name: Release
 
-# Push a tag like v0.1.0 to build a wheel with the dashboard inside and attach it to a GitHub release.
-# Install it with:  uv tool install "hushmask[proxy] @ <wheel URL from the release>"
+# Push a tag like v0.1.0 to:
+#   1. build the dashboard and a wheel with it inside, run the tests,
+#   2. attach the files to a GitHub release,
+#   3. publish to PyPI, so `uv tool install "hushmask[all]"` works.
+# One-time PyPI setup (no tokens): pypi.org → your account → Publishing → add a pending publisher:
+#   project hushmask, owner bilal-py, repository hushmask, workflow release.yml, environment pypi.
 on:
   push:
     tags: ["v*"]
 
-permissions:
-  contents: write
-
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Tag matches the version in pyproject.toml
+        run: |
+          version=$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != version $version"; exit 1; }
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -25,7 +32,36 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --extra proxy && uv run pytest -q
       - run: uv build
-      - name: Create release
-        env:
+      - name: Dashboard is inside the wheel
+        run: unzip -l dist/*.whl | grep -q 'hushmask/web_dist/index.html'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes
+
+  pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # trusted publishing: PyPI trusts this workflow, no API token stored anywhere
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

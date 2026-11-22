@@ -6,7 +6,6 @@ upstream, and the answer is restored before it goes back to the client. The dash
 
 from __future__ import annotations
 
-import importlib.util
 import threading
 from collections import Counter, defaultdict
 from collections.abc import AsyncIterator
@@ -23,7 +22,8 @@ from fastapi.staticfiles import StaticFiles
 
 from ..entities import Entity
 from ..masker import LeakError, Masker
-from ..ner import GlinerDetector
+from ..ner import GlinerDetector, onnx_available
+from ..ner import available as ner_available
 from ..policy import Policy
 from .config import AppConfig, ProxyConfig
 from .openai import UnmaskableContent, error_body, mask_request, restore_response, to_sse
@@ -53,13 +53,22 @@ class NerHolder:
     def __init__(self, model: str, threshold: float) -> None:
         self.model_name = model
         self.threshold = threshold
-        self.available = importlib.util.find_spec("gliner") is not None
+        self.available = ner_available()
         self._detector: _LockedDetector | None = None
         self._lock = threading.Lock()
 
     @property
     def loaded(self) -> bool:
         return self._detector is not None
+
+    @property
+    def cached(self) -> bool:
+        """False until the model files are on disk: the first use then has to download ~0.6 GB."""
+        if self.loaded or not onnx_available():
+            return True  # PyTorch models are cached by Hugging Face; nothing useful to report
+        from ..onnx_ner import is_cached
+
+        return is_cached()
 
     def get(self) -> _LockedDetector | None:
         if not self.available:

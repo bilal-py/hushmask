@@ -1,7 +1,8 @@
 """Model-based detection for names, addresses and places that no pattern or list can catch.
 
-Needs the optional extra: `uv sync --extra ner` (or `pip install hushmask[ner]`). The model is
-downloaded from Hugging Face on first use and runs locally on CPU.
+Needs the optional extra: `uv sync --extra ner` (or `pip install hushmask[ner]`). That runs the model
+with onnxruntime (~600 MB with the model, see `onnx_ner.py`). The `ner-torch` extra runs the same model
+with PyTorch instead (~1.8 GB). Either way it's downloaded on first use and runs locally on CPU.
 
 Bank statements are hard for NER models: they are ALL CAPS and glue words together
 (`NEFT-SUNITA RAO-REFUND`). So the model reads a *view* of the text in which separators become
@@ -11,6 +12,7 @@ original, so the model's character offsets map straight back.
 
 from __future__ import annotations
 
+import importlib.util
 import re
 from collections.abc import Iterator, Mapping
 from typing import Any, Protocol
@@ -19,6 +21,20 @@ from .detectors import PRIORITY_MODEL
 from .entities import Entity, EntityType
 
 DEFAULT_MODEL = "urchade/gliner_multi_pii-v1"
+
+
+def onnx_available() -> bool:
+    return all(importlib.util.find_spec(m) is not None for m in ("onnxruntime", "tokenizers", "numpy"))
+
+
+def torch_available() -> bool:
+    return importlib.util.find_spec("gliner") is not None
+
+
+def available() -> bool:
+    """True if either backend for the names model is installed."""
+    return onnx_available() or torch_available()
+
 
 # "organization" is deliberately absent: on statements it means merchants, which the AI needs.
 DEFAULT_LABELS: dict[str, EntityType] = {
@@ -103,23 +119,36 @@ class GlinerDetector:
         labels: Mapping[str, EntityType] | None = None,
         threshold: float = 0.5,
         chunk_chars: int = 1500,
+        backend: str = "auto",
     ) -> None:
+        """`backend`: "onnx" (onnxruntime, small), "torch" (gliner + PyTorch), or "auto" (onnx if installed)."""
         self._model_name = model if isinstance(model, str) else None
         self._model: NerModel | None = None if isinstance(model, str) else model
         self.labels = dict(labels or DEFAULT_LABELS)
         self.threshold = threshold
         self.chunk_chars = chunk_chars
+        self.backend = backend
 
     @property
     def model(self) -> NerModel:
         if self._model is None:
-            try:
+            backend = self.backend
+            if backend == "auto":
+                backend = "onnx" if onnx_available() else "torch" if torch_available() else "none"
+            if backend == "onnx":
+                from .onnx_ner import DEFAULT_REPO, OnnxGliner
+
+                # The default PyTorch model and the ONNX repo are the same weights.
+                repo = DEFAULT_REPO if self._model_name == DEFAULT_MODEL else self._model_name
+                self._model = OnnxGliner(repo)
+            elif backend == "torch":
                 from gliner import GLiNER
-            except ImportError as err:
+
+                self._model = GLiNER.from_pretrained(self._model_name)
+            else:
                 raise ImportError(
                     "Model-based detection needs the 'ner' extra: uv sync --extra ner (or pip install hushmask[ner])"
-                ) from err
-            self._model = GLiNER.from_pretrained(self._model_name)
+                )
         return self._model
 
     def detect(self, text: str) -> list[Entity]:

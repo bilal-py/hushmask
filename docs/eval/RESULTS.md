@@ -10,8 +10,8 @@ every run is seeded, so the same command gives the same numbers.
 
 | Setup | Values | Leaked or partly visible | Over-masked spans | Merchants damaged | ms / doc |
 |---|---:|---:|---:|---:|---:|
-| patterns | 211 | 74.4% | 8 | n/a | 0.1 |
-| patterns + names model | 211 | 10.0% | 106 | n/a | 167.5 |
+| patterns | 211 | 74.4% | 8 | n/a | 0.2 |
+| patterns + names model | 211 | 10.0% | 106 | n/a | 156.1 |
 
 Leaks by type, *patterns + names model*:
 
@@ -24,7 +24,7 @@ Leaks by type, *patterns + names model*:
 | PERSON | 80 | 79 | 0 | 1 |
 | PHONE | 26 | 23 | 0 | 3 |
 
-Kinds hushmask doesn't detect (hidden anyway / total): USERNAME 24/34, IDCARDNUM 0/21, DATEOFBIRTH 0/19, TAXNUM 0/19, ZIPCODE 4/18, ACCOUNTNUM 1/16, SOCIALNUM 1/14, PASSWORD 0/12, DRIVERLICENSENUM 0/3.
+Kinds hushmask doesn't detect (hidden anyway / total): USERNAME 24/34, IDCARDNUM 0/21, DATEOFBIRTH 0/19, TAXNUM 0/19, ZIPCODE 4/18, ACCOUNTNUM 7/16, SOCIALNUM 1/14, PASSWORD 0/12, DRIVERLICENSENUM 0/3.
 
 Examples of over-masking: `LOCATION: 'Eilt'`; `PERSON: 'Ich'`; `PERSON: 'Hallo'`; `CARD: '182035728710845'`; `PERSON: 'Teilnehmer'`; `PERSON: 'Ich'`
 
@@ -35,7 +35,7 @@ Examples of over-masking: `LOCATION: 'Eilt'`; `PERSON: 'Ich'`; `PERSON: 'Hallo'`
 | Setup | Values | Leaked or partly visible | Over-masked spans | Merchants damaged | ms / doc |
 |---|---:|---:|---:|---:|---:|
 | patterns | 347 | 73.5% | 16 | n/a | 0.1 |
-| patterns + names model | 347 | 13.0% | 200 | n/a | 166.4 |
+| patterns + names model | 347 | 13.0% | 201 | n/a | 161.7 |
 
 Leaks by type, *patterns + names model*:
 
@@ -58,23 +58,40 @@ Examples of over-masking: `CARD: '143107573075638'`; `LOCATION: 'ENG'`; `PERSON:
 
 | Setup | Values | Leaked or partly visible | Over-masked spans | Merchants damaged | ms / doc |
 |---|---:|---:|---:|---:|---:|
-| patterns | 3217 | 49.4% | 0 | 0 / 1396 | 0.4 |
-| patterns + your list | 3217 | 27.0% | 0 | 0 / 1396 | 0.4 |
-| patterns + your list + names model | 3217 | 0.6% | 0 | 0 / 1396 | 376.9 |
+| patterns | 3255 | 42.4% | 0 | 0 / 1340 | 0.5 |
+| patterns + your list | 3255 | 27.1% | 0 | 0 / 1340 | 0.6 |
+| patterns + your list + names model | 3255 | 0.5% | 1 | 1 / 1340 | 333.8 |
 
 Leaks by type, *patterns + your list + names model*:
 
 | Type | Values | Protected | Partly visible | Leaked |
 |---|---:|---:|---:|---:|
-| AADHAAR | 70 | 70 | 0 | 0 |
-| ACCOUNT | 178 | 178 | 0 | 0 |
-| ADDRESS | 300 | 297 | 2 | 1 |
-| CARD | 485 | 485 | 0 | 0 |
+| AADHAAR | 65 | 65 | 0 | 0 |
+| ACCOUNT | 172 | 172 | 0 | 0 |
+| ADDRESS | 300 | 300 | 0 | 0 |
+| CARD | 475 | 475 | 0 | 0 |
 | EMAIL | 300 | 300 | 0 | 0 |
-| IBAN | 122 | 122 | 0 | 0 |
-| PAN | 70 | 70 | 0 | 0 |
-| PERSON | 1290 | 1274 | 2 | 14 |
+| IBAN | 128 | 128 | 0 | 0 |
+| PAN | 65 | 65 | 0 | 0 |
+| PERSON | 1346 | 1328 | 1 | 17 |
 | PHONE | 300 | 300 | 0 | 0 |
-| UPI | 102 | 102 | 0 | 0 |
+| UPI | 104 | 104 | 0 | 0 |
 
-Left visible on purpose by this preset (hidden anyway / total): LOCATION 0/633, IFSC 0/178.
+Left visible on purpose by this preset (hidden anyway / total): LOCATION 0/633, IFSC 0/172.
+
+Examples of over-masking: `PERSON: 'OLA CABS'`
+
+Merchants damaged: `OLA CABS`
+
+### Does masking cost the AI accuracy?
+
+8 synthetic statements categorized by `qwen2.5:7b`, temperature 0, once without and once with hushmask (finance preset, holder's name and address listed, names model on).
+
+| Condition | Transactions | Category accuracy | People named correctly | Wrong count | s / statement |
+|---|---:|---:|---:|---:|---:|
+| without hushmask | 52 | 94.2% | 100.0% | 0 | 39.2 |
+| with hushmask | 52 | 92.3% | 100.0% | 0 | 40.5 |
+
+Most common mistakes without hushmask: Travel → Transport (1), Refund → Income (1), Travel → Transfer (1).
+
+Most common mistakes with hushmask: Shopping → Groceries (1), Travel → Transport (1), Subscriptions → Shopping (1), Travel → Transfer (1).

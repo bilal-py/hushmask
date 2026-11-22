@@ -48,6 +48,14 @@ def test_admin_api_refuses_non_local_hosts(tmp_path, host):
         assert client.get("/hushmask/api/info", headers={"Host": host}).status_code == 403
 
 
+def test_info_reports_names_model_status(tmp_path):
+    client, _ = admin_client(tmp_path)
+    with client:
+        ner = client.get("/hushmask/api/info").json()["ner"]
+    assert set(ner) == {"available", "loaded", "cached", "model"}
+    assert ner["loaded"] is False
+
+
 @pytest.mark.parametrize("host", ["localhost:8700", "127.0.0.1", "[::1]:8700"])
 def test_admin_api_accepts_local_hosts(tmp_path, host):
     client, _ = admin_client(tmp_path)
