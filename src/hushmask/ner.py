@@ -136,6 +136,10 @@ class GlinerDetector:
                 if entity_type is None:
                     continue
                 start, end = trim_span(text, offset + p["start"], offset + p["end"])
-                if start < end and not label_words & {w.casefold() for w in _WORD.findall(text[start:end])}:
+                value = text[start:end]
+                # Fewer than 2 letters ("M", "J.") is noise the evaluation kept finding, not a name.
+                if sum(c.isalpha() for c in value) < 2:
+                    continue
+                if start < end and not label_words & {w.casefold() for w in _WORD.findall(value)}:
                     found.append(Entity(entity_type, start, end, text[start:end], self.name, PRIORITY_MODEL))
         return found

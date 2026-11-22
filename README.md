@@ -56,6 +56,9 @@ Shorter forms of a full name link to it: if "Rahul Sharma" is `PERSON_3c9ef6`, "
 `PERSON_3c9ef6_1`. The AI can tell it's the same person, and each restores to exactly what was written.
 If two people share the surname, nothing is linked.
 
+**Project page:** [`site/index.html`](site/index.html) is a single self-contained page that explains hushmask,
+with a live redaction demo that runs in the browser. Open it directly, or serve it with GitHub Pages.
+
 ## Dashboard
 
 ![Playground: highlighted values on the left, what the AI receives on the right](docs/images/playground.png)
@@ -120,6 +123,22 @@ What it does with a request:
   provider's prompt cache keeps working.
 - Headers `X-Hushmask-Masked` and `X-Hushmask-Unknown-Tokens` on every answer; `GET /hushmask/stats` gives
   per-app counts (never values). Supports `POST /v1/chat/completions`, `GET /v1/models`, `GET /health`.
+
+## How well it works
+
+Share of personal values **fully** hidden on labelled data ([full tables](docs/eval/RESULTS.md),
+[method and caveats](docs/eval/README.md)):
+
+| Data | Patterns | + your list | + names model | Over-masking (best setup) |
+|---|---:|---:|---:|---|
+| Synthetic bank statements (300, finance preset) | 50.6% | 73.0% | **99.4%** | 0 spans; 0 of 1,396 merchants touched |
+| ai4privacy English (500 records, strict) | 26.5% | n/a | **87.0%** | 200 ordinary words masked |
+| ai4privacy German (300 records, strict) | 25.6% | n/a | **90.0%** | 106 ordinary words masked |
+
+The synthetic statements come from the same project as the detectors and flatter them; ai4privacy is the
+honest number. Most ai4privacy leaks are random-digit "card numbers" that fail the Luhn check (left alone on
+purpose) and street addresses. Usernames, passwords, dates of birth and ID numbers aren't detected at all; they
+are listed separately in the results, not hidden in the totals.
 
 ## Use it from Python
 

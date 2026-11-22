@@ -1,0 +1,216 @@
+{
+  "title": "ai4privacy pii-masking-400k, validation, de (strict preset)",
+  "description": "300 random records (seed 7) from the [ai4privacy](https://huggingface.co/datasets/ai4privacy/pii-masking-400k) validation split, used under its academic, non-commercial licence. Not built around hushmask's formats. Their GIVENNAME/SURNAME count as PERSON, STREET/BUILDINGNUM as ADDRESS, CITY as LOCATION.",
+  "dataset": "ai4privacy",
+  "preset": "strict",
+  "setups": {
+    "patterns": {
+      "docs": 300,
+      "values": 211,
+      "leak_rate": 0.7441,
+      "per_type": {
+        "ADDRESS": {
+          "total": 28,
+          "protected": 0,
+          "partial": 0,
+          "leaked": 28,
+          "leak_rate": 1.0
+        },
+        "CARD": {
+          "total": 10,
+          "protected": 2,
+          "partial": 0,
+          "leaked": 8,
+          "leak_rate": 0.8
+        },
+        "EMAIL": {
+          "total": 29,
+          "protected": 29,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "LOCATION": {
+          "total": 38,
+          "protected": 0,
+          "partial": 0,
+          "leaked": 38,
+          "leak_rate": 1.0
+        },
+        "PERSON": {
+          "total": 80,
+          "protected": 0,
+          "partial": 0,
+          "leaked": 80,
+          "leak_rate": 1.0
+        },
+        "PHONE": {
+          "total": 26,
+          "protected": 23,
+          "partial": 0,
+          "leaked": 3,
+          "leak_rate": 0.1154
+        }
+      },
+      "out_of_scope": {
+        "ACCOUNTNUM": {
+          "total": 16,
+          "protected": 1
+        },
+        "DATEOFBIRTH": {
+          "total": 19,
+          "protected": 0
+        },
+        "DRIVERLICENSENUM": {
+          "total": 3,
+          "protected": 0
+        },
+        "IDCARDNUM": {
+          "total": 21,
+          "protected": 0
+        },
+        "PASSWORD": {
+          "total": 12,
+          "protected": 0
+        },
+        "SOCIALNUM": {
+          "total": 14,
+          "protected": 1
+        },
+        "TAXNUM": {
+          "total": 19,
+          "protected": 0
+        },
+        "USERNAME": {
+          "total": 34,
+          "protected": 1
+        },
+        "ZIPCODE": {
+          "total": 18,
+          "protected": 0
+        }
+      },
+      "false_positives": 8,
+      "false_positive_examples": [
+        "CARD: '182035728710845'",
+        "CARD: '743858836573728'",
+        "CARD: '424865846072761'",
+        "PHONE: '0536 1672 4927'",
+        "CARD: '273867622813683'",
+        "CARD: '603645116761217'",
+        "CARD: '885701602128137'",
+        "CARD: '511268603534756'"
+      ],
+      "keep_total": 0,
+      "keep_damaged": 0,
+      "keep_damaged_examples": [],
+      "ms_per_doc": 0.1
+    },
+    "patterns + names model": {
+      "docs": 300,
+      "values": 211,
+      "leak_rate": 0.0995,
+      "per_type": {
+        "ADDRESS": {
+          "total": 28,
+          "protected": 24,
+          "partial": 0,
+          "leaked": 4,
+          "leak_rate": 0.1429
+        },
+        "CARD": {
+          "total": 10,
+          "protected": 2,
+          "partial": 0,
+          "leaked": 8,
+          "leak_rate": 0.8
+        },
+        "EMAIL": {
+          "total": 29,
+          "protected": 29,
+          "partial": 0,
+          "leaked": 0,
+          "leak_rate": 0.0
+        },
+        "LOCATION": {
+          "total": 38,
+          "protected": 33,
+          "partial": 0,
+          "leaked": 5,
+          "leak_rate": 0.1316
+        },
+        "PERSON": {
+          "total": 80,
+          "protected": 79,
+          "partial": 0,
+          "leaked": 1,
+          "leak_rate": 0.0125
+        },
+        "PHONE": {
+          "total": 26,
+          "protected": 23,
+          "partial": 0,
+          "leaked": 3,
+          "leak_rate": 0.1154
+        }
+      },
+      "out_of_scope": {
+        "ACCOUNTNUM": {
+          "total": 16,
+          "protected": 1
+        },
+        "DATEOFBIRTH": {
+          "total": 19,
+          "protected": 0
+        },
+        "DRIVERLICENSENUM": {
+          "total": 3,
+          "protected": 0
+        },
+        "IDCARDNUM": {
+          "total": 21,
+          "protected": 0
+        },
+        "PASSWORD": {
+          "total": 12,
+          "protected": 0
+        },
+        "SOCIALNUM": {
+          "total": 14,
+          "protected": 1
+        },
+        "TAXNUM": {
+          "total": 19,
+          "protected": 0
+        },
+        "USERNAME": {
+          "total": 34,
+          "protected": 24
+        },
+        "ZIPCODE": {
+          "total": 18,
+          "protected": 4
+        }
+      },
+      "false_positives": 106,
+      "false_positive_examples": [
+        "LOCATION: 'Eilt'",
+        "PERSON: 'Ich'",
+        "PERSON: 'Hallo'",
+        "CARD: '182035728710845'",
+        "PERSON: 'Teilnehmer'",
+        "PERSON: 'Ich'",
+        "PERSON: '[EMAILADDRESS_1]'",
+        "PERSON: '[JOBTYPE_1]'",
+        "ADDRESS: 'aa:54:47:58:23:0c'",
+        "PERSON: 'Prof'",
+        "PERSON: 'Winzer'",
+        "CARD: '743858836573728'"
+      ],
+      "keep_total": 0,
+      "keep_damaged": 0,
+      "keep_damaged_examples": [],
+      "ms_per_doc": 167.5
+    }
+  }
+}
