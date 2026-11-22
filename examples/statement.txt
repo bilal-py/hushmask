@@ -1,10 +1,11 @@
-﻿HDFC BANK - Statement for Rahul Sharma
-Account Number: 50100123456789   IFSC: HDFC0001234
-Address: 14 MG Road, Bengaluru 560001
+﻿Deutsche Bank - Kontoauszug for Lena Hoffmann
+IBAN: DE89 3704 0044 0532 0130 00
+Address: Bergstraße 12, 10115 Berlin
 
-12/11/2026  UPI/rahul.sharma@okhdfcbank/SWIGGY       450.00 Dr
-13/11/2026  POS 4111 1111 1111 1111 AMAZON PAY      1,299.00 Dr
-14/11/2026  NEFT FROM PRIYA MEHTA SALARY           85,000.00 Cr
-15/11/2026  STARBUCKS RESERVE                         380.00 Dr
+12/11/2026  CARD 4111 1111 1111 1111 REWE BERLIN          45.20 Dr
+13/11/2026  SEPA TRANSFER FROM JONAS BECKER SALARY     3,250.00 Cr
+14/11/2026  SEPA TRANSFER TO SOPHIE WAGNER RENT          950.00 Dr
+15/11/2026  PAYPAL *SPOTIFY                                10.99 Dr
+16/11/2026  STARBUCKS                                       4.80 Dr
 
-Questions? rahul.sharma@example.com or +91 98765 43210
+Questions? lena.hoffmann@example.de or +49 151 23456789

@@ -94,7 +94,7 @@ export function Field({ label, hint, children }: { label: string; hint?: ReactNo
   )
 }
 
-/** The "always hide" list: values like "PERSON=Rahul Sharma". */
+/** The "always hide" list: values like "PERSON=Lena Hoffmann". */
 export function KnownValuesInput({ values, onChange }: { values: string[]; onChange: (values: string[]) => void }) {
   const [type, setType] = useState('PERSON')
   const [draft, setDraft] = useState('')

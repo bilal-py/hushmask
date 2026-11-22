@@ -10,7 +10,7 @@ key = "hm-spence-change-me"                # what the app sends as its API key
 upstream_url = "https://generativelanguage.googleapis.com/v1beta/openai"
 upstream_api_key_env = "GEMINI_API_KEY"    # the real provider key stays in the proxy's environment
 preset = "finance"                         # keeps merchants, amounts, cities; hides people, cards, accounts
-known = ["PERSON=Rahul Sharma", "ADDRESS=14 MG Road, Bengaluru 560001"]
+known = ["PERSON=Lena Hoffmann", "ADDRESS=Bergstraße 12, 10115 Berlin"]
 ner = true                                 # needs the 'ner' extra
 # allow_images = false                     # images can't be masked, so they're refused by default
 # placeholder_note = true                  # tell the model to copy placeholders exactly

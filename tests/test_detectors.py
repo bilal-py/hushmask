@@ -19,6 +19,8 @@ def types_in(text: str, **kwargs) -> list[tuple[EntityType, str]]:
         ("IFSC HDFC0001234", (EntityType.IFSC, "HDFC0001234")),
         ("Account Number: 50100123456789", (EntityType.ACCOUNT, "50100123456789")),
         ("A/c No. XXXXXXXX1234 debited", (EntityType.ACCOUNT, "XXXXXXXX1234")),
+        ("Kontonummer: 0532013000", (EntityType.ACCOUNT, "0532013000")),
+        ("Konto-Nr. 1234567890 belastet", (EntityType.ACCOUNT, "1234567890")),
         ("call +91 98765 43210 now", (EntityType.PHONE, "+91 98765 43210")),
         ("call 9876543210", (EntityType.PHONE, "9876543210")),
         ("office +44 20 7946 0958", (EntityType.PHONE, "+44 20 7946 0958")),
@@ -78,6 +80,14 @@ def test_ignores_ordinary_statement_text(text):
 def test_known_values_are_case_and_space_insensitive():
     found = types_in("Paid to RAHUL   sharma for rent", known=[KnownValue("Rahul Sharma", EntityType.PERSON)])
     assert found == [(EntityType.PERSON, "RAHUL   sharma")]
+
+
+def test_known_values_with_sharp_s():
+    # Found with the German examples: casefold("ß") == "ss", which broke the pattern.
+    known = [KnownValue("Bergstraße 12, 10115 Berlin", EntityType.ADDRESS), KnownValue("Jörg Weiß", EntityType.PERSON)]
+    found = types_in("lives at Bergstraße 12, 10115 Berlin, ask Herr WEISS or Jörg Weiß", known=known)
+    assert (EntityType.ADDRESS, "Bergstraße 12, 10115 Berlin") in found
+    assert (EntityType.PERSON, "Jörg Weiß") in found
 
 
 def test_known_person_parts_match_alone():

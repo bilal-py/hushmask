@@ -1,4 +1,4 @@
-﻿import { useRef } from 'react'
+import { useRef } from 'react'
 import type { FoundEntity } from './api'
 import { swatch } from './entities'
 

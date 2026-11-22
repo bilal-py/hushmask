@@ -1,7 +1,7 @@
 """hushmask command line.
 
 hushmask detect statement.txt
-hushmask mask statement.txt --known "PERSON=Rahul Sharma" --vault vault.json > masked.txt
+hushmask mask statement.txt --known "PERSON=Lena Hoffmann" --vault vault.json > masked.txt
 hushmask restore answer.txt --vault vault.json
 """
 
@@ -118,6 +118,11 @@ def cmd_serve(args: argparse.Namespace) -> int:
     print(f"[hushmask] dashboard  {base}/dashboard/", file=sys.stderr)
     if args.host not in ("127.0.0.1", "localhost", "::1"):
         print("[hushmask] warning: listening beyond this machine; anyone who can reach it can use it", file=sys.stderr)
+    if args.open:
+        import threading
+        import webbrowser
+
+        threading.Timer(1.5, webbrowser.open, [f"{base}/dashboard/"]).start()
     uvicorn.run(create_app(config, store=store), host=args.host, port=args.port, log_level="warning")
     return 0
 
@@ -212,7 +217,7 @@ def build_parser() -> argparse.ArgumentParser:
     def add_masking(p: argparse.ArgumentParser) -> None:
         p.add_argument("--preset", choices=sorted(PRESETS), default="strict")
         p.add_argument(
-            "--known", action="append", metavar="[TYPE=]VALUE", help='always hide this, e.g. "PERSON=Rahul Sharma"'
+            "--known", action="append", metavar="[TYPE=]VALUE", help='always hide this, e.g. "PERSON=Lena Hoffmann"'
         )
         p.add_argument("--known-file", metavar="PATH", help="one [TYPE=]VALUE per line")
         p.add_argument("--ner", action="store_true", help="also find names/addresses/places with a local model")
@@ -244,6 +249,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8700)
     p.add_argument("--allow-images", action="store_true", help="send images unmasked instead of refusing them")
+    p.add_argument("--open", action="store_true", help="open the dashboard in your browser")
     add_masking(p)
     p.set_defaults(func=cmd_serve)
 

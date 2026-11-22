@@ -84,20 +84,29 @@ class KnownValuesDetector:
     name = "known"
 
     def __init__(self, values: Iterable[KnownValue] = (), *, split_names: bool = True) -> None:
-        self._types: dict[str, EntityType] = {}
+        self._types: dict[str, EntityType] = {}  # casefolded value -> type, for lookups
+        written: dict[str, str] = {}  # casefolded value -> value as written, for the pattern
+
+        def add(value: str, entity_type: EntityType) -> None:
+            key = value.casefold()
+            self._types.setdefault(key, entity_type)
+            written.setdefault(key, value)
+
         for known in values:
             value = " ".join(known.value.split())
             if not value:
                 continue
-            self._types.setdefault(value.casefold(), known.type)
+            add(value, known.type)
             if split_names and known.type is EntityType.PERSON:
                 for part in value.split():
                     if len(part) >= 3:
-                        self._types.setdefault(part.casefold(), known.type)
+                        add(part, known.type)
 
         self._pattern: re.Pattern[str] | None = None
         if self._types:
-            alternatives = sorted(self._types, key=len, reverse=True)
+            # Build the pattern from the values as written: casefolding turns "ß" into "ss", and a pattern
+            # for "bergstrasse" never matches "Bergstraße", even with IGNORECASE.
+            alternatives = sorted(written.values(), key=len, reverse=True)
             body = "|".join(re.escape(a).replace(r"\ ", r"\s+") for a in alternatives)
             self._pattern = re.compile(rf"(?<!\w)(?:{body})(?!\w)", re.IGNORECASE)
 
@@ -169,7 +178,8 @@ def default_detectors() -> list[Detector]:
             "account",
             EntityType.ACCOUNT,
             re.compile(
-                r"(?i)\b(?:a/c|acct|account)(?:\s*(?:no\.?|number|num|#))?\s*[:.#-]?\s*([X*\d][\dX* -]{4,22}\d)"
+                r"(?i)\b(?:a/c|acct|account|kontonummer|konto-?nr\.?|konto)(?:\s*(?:no\.?|number|num|#))?"
+                r"\s*[:.#-]?\s*([X*\d][\dX* -]{4,22}\d)"
             ),
             PRIORITY_CONTEXT,
             group=1,

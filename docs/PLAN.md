@@ -61,6 +61,44 @@ Presidio, LLM Guard, Private AI and others already cover parts of this.
 - A 10-digit number starting 6–9 is treated as an Indian mobile, even if it's an order number.
 - Known values of 3 characters (e.g. "Ram") will also mask the ordinary word.
 
+## What's left
+
+1. Re-run the AI-accuracy eval (`hushmask eval task`); it ran out of memory with the names model and a 7B model loaded together.
+2. Phase 5: point Spence at the proxy (needs a "custom base URL" setting in Spence's AI settings).
+3. Tag `v0.1.0` so the release workflow publishes an installable wheel.
+4. Phase 6 items (files, streaming, fake values, browser extension), in that order of value.
+
+## Improvement ideas (keep all current behaviour)
+
+Ordered by value for effort. None of these remove a feature.
+
+- **Smaller, faster names model:** export GLiNER to ONNX and run it with onnxruntime. Likely cuts the ~1.7 GB
+  install to a few hundred MB and halves CPU time, and fixes the out-of-memory run. Keep PyTorch as a fallback.
+- **One-line install:** publish to PyPI (`uv tool install hushmask[proxy]`) with the dashboard in the wheel, and
+  a Docker image (`docker run -p 8700:8700 hushmask`). The release workflow already builds the wheel.
+- **Fewer false names:** require a higher score (~0.75) for single-word names, and skip capitalized words at the
+  start of a line/sentence that the model only scores weakly ("Hallo", "Volunteer"). Measure with
+  `hushmask eval detect --dataset ai4privacy --ner` before keeping it.
+- **Address patterns:** German/EU street formats ("Bergstraße 12, 10115 Berlin", "Rue de Rivoli 5") as a
+  pattern, so addresses don't depend on the model. Addresses are the biggest remaining leak on English text.
+- **More EU identifiers with checksums:** German tax ID (Steuer-ID), Dutch BSN, French INSEE, Spanish DNI/NIE,
+  passport numbers. Same approach as IBAN: pattern + checksum, so no over-masking.
+- **Case-insensitive `ß`:** "WEISS" doesn't match a listed "Weiß" (Python's IGNORECASE doesn't map ß↔SS).
+  Normalise both sides before matching.
+- **Real streaming:** stream from upstream and hold back only text that could be the start of a token
+  (`[A-Z]+_[0-9a-f]*`), releasing everything else immediately. Keeps restore safe, cuts waiting time.
+- **More APIs:** OpenAI `/v1/responses`, `/v1/embeddings` (mask only), and Anthropic's `/v1/messages`, so more
+  tools can sit behind hushmask.
+- **Provider keys in the OS keychain** (Windows Credential Manager, macOS Keychain) instead of plain text in
+  `apps.json`; environment variables stay supported.
+- **Persistent counts:** keep per-app stats (counts only) in a small SQLite file with a daily chart in the
+  dashboard, so they survive restarts.
+- **Dashboard:** hover from source text to token too (render the editor's marks as hit targets), and a
+  "copy masked text" button for people who paste into chat UIs by hand.
+- **Request limits:** a max body size and a per-app rate limit, so a runaway client can't exhaust memory.
+- **Site demo in sync with Python:** a CI test that runs the same sample texts through the JS port and the Python
+  detectors and fails if they disagree.
+
 ## Decision log
 
 | Date | Decision | Why |
@@ -101,3 +139,9 @@ Presidio, LLM Guard, Private AI and others already cover parts of this.
 | 2026-11-22 | Added a loose national phone pattern (trunk 0 or bracketed area code, 9–14 digits, dates rejected) | ai4privacy phone leaks 17 → 3 (en) and 11 → 3 (de) with zero new over-masking on statements |
 | 2026-11-22 | Names model: drop spans with fewer than 2 letters | First eval run showed single letters ("M") masked as people |
 | 2026-11-22 | Cards stay Luhn-checked even though ai4privacy's random card numbers then leak | Matching any 16-digit run would mask account numbers and references; real cards pass Luhn |
+| 2026-11-22 | Examples, dashboard sample and site use European (German) names and general texts, not Indian/payment-only | hushmask is a general tool, independent of Spence; target audience is Europe |
+| 2026-11-22 | Known-values pattern built from values as written, lookups casefolded | German example exposed it: casefold("ß") == "ss" made "Bergstraße" unmatchable |
+| 2026-11-22 | Account detector also reads German labels (Kontonummer, Konto-Nr.) | German examples and users |
+| 2026-11-22 | Site: EN/DE and light/dark switches, language from the browser, both remembered | European audience; follows the dashboard's design |
+| 2026-11-22 | CI: tests + lint on Ubuntu and Windows (Python 3.12/3.13), dashboard build; Pages deploys `site/`; tags `v*` publish a wheel with the dashboard | Easy install without Node for testers; names model left out of CI (tests use a fake model) |
+| 2026-11-22 | `setup.ps1` / `setup.sh` + `hushmask serve --open` | One command to install, one to run |

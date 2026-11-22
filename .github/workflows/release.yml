@@ -1,0 +1,31 @@
+name: Release
+
+# Push a tag like v0.1.0 to build a wheel with the dashboard inside and attach it to a GitHub release.
+# Install it with:  uv tool install "hushmask[proxy] @ <wheel URL from the release>"
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build dashboard
+        working-directory: web
+        run: npm ci && npm run build
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --extra proxy && uv run pytest -q
+      - run: uv build
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --generate-notes

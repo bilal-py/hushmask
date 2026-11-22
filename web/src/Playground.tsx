@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, type Info, type Preview } from './api'
 import { describeCounts, swatch, typeName } from './entities'
 import { HighlightEditor } from './HighlightEditor'
@@ -6,27 +6,26 @@ import { RoundTripPanel } from './RoundTrip'
 import { usePersistentState } from './lib'
 import { ErrorText, KnownValuesInput, MaskedText, Pane, Segmented, Toggle } from './ui'
 
-const SAMPLE = `HDFC BANK statement for Rahul Sharma, A/c No. 50100123456789
-12/11/2026  UPI/rahul.sharma@okhdfcbank/SWIGGY         450.00 Dr
-13/11/2026  POS 4111 1111 1111 1111 AMAZON PAY       1,299.00 Dr
-14/11/2026  NEFT FROM PRIYA MEHTA SALARY            85,000.00 Cr
-15/11/2026  IMPS TO AMIT KUMAR RENT NOV             18,000.00 Dr
-16/11/2026  STARBUCKS RESERVE                          380.00 Dr
+const SAMPLE = `Hi Markus,
 
-Hi team, please reimburse Neha Gupta (neha@corp.in, +91 98765 43210)
-for the Paris trip. Her manager is Dr. Vikram Singh.`
+please send the signed contract to Lena Hoffmann (lena.hoffmann@example.de, +49 151 23456789).
+The deposit goes to her IBAN DE89 3704 0044 0532 0130 00. She lives at Bergstraße 12, 10115 Berlin.
+Jonas Becker from accounting will pay the first invoice with card 4111 1111 1111 1111.
+
+Thanks,
+Sophie Wagner`
 
 const PRESET_HINTS: Record<string, string> = {
-  finance: 'Keeps merchants, amounts and cities, so the AI can still categorize spending.',
   strict: 'Hides every kind of value hushmask can find.',
+  finance: 'Keeps cities and bank codes, so an AI can still categorize spending.',
 }
 
 const DETECTOR_NAMES: Record<string, string> = { known: 'your list', gliner: 'names model' }
 
 export function Playground({ info }: { info: Info }) {
-  const [text, setText] = usePersistentState('text', SAMPLE)
-  const [preset, setPreset] = usePersistentState('preset', 'finance')
-  const [known, setKnown] = usePersistentState<string[]>('known', ['PERSON=Rahul Sharma'])
+  const [text, setText] = usePersistentState('text-v2', SAMPLE)
+  const [preset, setPreset] = usePersistentState('preset-v2', 'strict')
+  const [known, setKnown] = usePersistentState<string[]>('known-v2', ['PERSON=Lena Hoffmann'])
   const [ner, setNer] = usePersistentState('ner', false)
   const [preview, setPreview] = useState<(Preview & { source: string }) | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -60,7 +59,7 @@ export function Playground({ info }: { info: Info }) {
   const current = preview && preview.source === text ? preview : null
   const counts: Record<string, number> = {}
   for (const e of current?.entities ?? []) counts[e.type] = (counts[e.type] ?? 0) + 1
-  const presetNames = Object.keys(info.presets).sort((a) => (a === 'finance' ? -1 : 1))
+  const presetNames = Object.keys(info.presets).sort((a) => (a === 'strict' ? -1 : 1))
 
   return (
     <div className="space-y-10">

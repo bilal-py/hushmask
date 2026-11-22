@@ -15,7 +15,7 @@ key = "hm-spence-change-me"
 upstream_url = "https://generativelanguage.googleapis.com/v1beta/openai"
 upstream_api_key_env = "GEMINI_API_KEY"
 preset = "finance"
-known = ["PERSON=Rahul Sharma", "ADDRESS=14 MG Road, Bengaluru"]
+known = ["PERSON=Lena Hoffmann", "ADDRESS=Bergstraße 12, 10115 Berlin"]
 ner = true
 
 [apps.notes]

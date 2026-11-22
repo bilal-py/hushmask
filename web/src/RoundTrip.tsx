@@ -10,8 +10,8 @@ export function RoundTripPanel({ info, text }: { info: Info; text: string }) {
   const [appName, setAppName] = usePersistentState('rt-app', '')
   const [model, setModel] = usePersistentState('rt-model', 'qwen2.5:7b')
   const [instruction, setInstruction] = usePersistentState(
-    'rt-instruction',
-    'List each transaction with its date, who it was with, the amount and a spending category.',
+    'rt-instruction-v2',
+    'Summarize this message in two sentences, then list who has to do what.',
   )
   const [apiKey, setApiKey] = useState('')
   const [result, setResult] = useState<RoundTrip | null>(null)

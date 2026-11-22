@@ -4,11 +4,19 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>hushmask: tell the AI everything except who you are</title>
-<meta name="description" content="hushmask hides names, card numbers, accounts and other personal details before your text reaches an AI, and puts them back in the answer. Runs on your machine." />
+<meta name="description" content="hushmask hides names, emails, phone numbers, IBANs and other personal details before your text reaches an AI, and puts them back in the answer. Runs on your machine." />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23EEF1F5'/%3E%3Crect x='6' y='8' width='20' height='3' rx='1.5' fill='%2356607A'/%3E%3Crect x='6' y='14.5' width='20' height='4' rx='1' fill='%231A2233'/%3E%3Crect x='6' y='22' width='13' height='3' rx='1.5' fill='%2356607A'/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet" />
+<script>
+  // Apply saved theme and language before first paint, so nothing flashes.
+  try {
+    const theme = localStorage.getItem('hm-theme'); if (theme) document.documentElement.dataset.theme = theme;
+    const lang = localStorage.getItem('hm-lang') || (navigator.language || '').slice(0, 2);
+    document.documentElement.lang = lang === 'de' ? 'de' : 'en';
+  } catch (e) {}
+</script>
 <style>
   :root {
     --paper: #eef1f5; --surface: #fff; --ink: #1a2233; --ink-soft: #56607a; --line: #d5dbe5;
@@ -19,25 +27,30 @@
     --mono: "IBM Plex Mono", ui-monospace, monospace;
     color-scheme: light;
   }
+  :root[data-theme="dark"] {
+    --paper: #121826; --surface: #1a2233; --ink: #e6eaf2; --ink-soft: #97a1b8; --line: #2c3650;
+    --tape: #e6eaf2; --tape-text: #121826;
+    --hl-person: #e8cf45; --hl-number: #f08cb7; --hl-contact: #6fd9ad; --hl-place: #82c4ec; --hl-custom: #b7a4f2;
+    --ok: #5fd39c; --warn: #ff8a7a; color-scheme: dark;
+  }
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
       --paper: #121826; --surface: #1a2233; --ink: #e6eaf2; --ink-soft: #97a1b8; --line: #2c3650;
       --tape: #e6eaf2; --tape-text: #121826;
       --hl-person: #e8cf45; --hl-number: #f08cb7; --hl-contact: #6fd9ad; --hl-place: #82c4ec; --hl-custom: #b7a4f2;
-      --ok: #5fd39c; --warn: #ff8a7a;
-      color-scheme: dark;
+      --ok: #5fd39c; --warn: #ff8a7a; color-scheme: dark;
     }
   }
   * { box-sizing: border-box; }
   html { background: var(--paper); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
-  body { margin: 0; font-size: 1.0625rem; line-height: 1.6; }
+  body { margin: 0; font-size: 1.0625rem; line-height: 1.6; background: var(--paper); }
   a { color: inherit; }
   :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   h1, h2, h3 { margin: 0; letter-spacing: -0.025em; line-height: 1.1; }
   h2 { font-size: clamp(1.8rem, 3.6vw, 2.6rem); font-weight: 800; }
   h3 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
   p { margin: 0; }
-  code, kbd, pre { font-family: var(--mono); font-size: 0.9em; }
+  code, pre { font-family: var(--mono); font-size: 0.9em; }
   .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
   .lede { color: var(--ink-soft); max-width: 62ch; margin-top: 14px; font-size: 1.125rem; }
   section { padding: 96px 0 0; }
@@ -45,71 +58,85 @@
   .btn:hover { border-color: var(--ink-soft); }
   .btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
   .btn.primary:hover { opacity: .9; }
+  .btn.small { padding: 6px 12px; font-size: .9rem; }
 
-  /* nav */
   header.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
-  header.top .wrap { display: flex; align-items: center; gap: 28px; height: 60px; }
+  header.top .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.2rem; text-decoration: none; letter-spacing: -0.02em; }
-  nav.links { display: flex; gap: 22px; font-size: .95rem; color: var(--ink-soft); }
+  nav.links { display: flex; gap: 20px; font-size: .95rem; color: var(--ink-soft); }
   nav.links a { text-decoration: none; }
   nav.links a:hover { color: var(--ink); }
-  header.top .gh { margin-left: auto; }
-  @media (max-width: 760px) { nav.links { display: none; } }
+  .tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .icon-btn { width: 38px; height: 38px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
+  .icon-btn:hover { border-color: var(--ink-soft); }
+  .icon-btn .moon { display: none; }
+  :root[data-theme="dark"] .icon-btn .sun { display: none; }
+  :root[data-theme="dark"] .icon-btn .moon { display: block; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .icon-btn .sun { display: none; }
+    :root:not([data-theme="light"]) .icon-btn .moon { display: block; }
+  }
+  @media (max-width: 860px) { nav.links { display: none; } .tools .gh { display: none; } }
 
-  /* hero */
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 3px; }
+  .seg button { border: 0; background: none; font: 500 .9rem var(--sans); color: var(--ink-soft); padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+  .seg button[aria-checked="true"] { background: var(--ink); color: var(--paper); }
+
   .hero { padding: 88px 0 24px; }
-  .hero h1 { font-size: clamp(2.6rem, 6.4vw, 5rem); font-weight: 800; letter-spacing: -0.045em; max-width: 13ch; }
+  .hero h1 { font-size: clamp(2.6rem, 6.4vw, 5rem); font-weight: 800; letter-spacing: -0.045em; max-width: 14ch; }
   .hero .lede { font-size: 1.25rem; }
   .hero .ctas { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
-  .specimen { margin-top: 56px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 28px 28px 22px; overflow: hidden; }
-  .specimen .line { font-family: var(--mono); font-size: clamp(.95rem, 2.3vw, 1.6rem); white-space: nowrap; overflow-x: auto; padding: 6px 0; }
-  .specimen .caption { margin-top: 14px; font-size: .95rem; color: var(--ink-soft); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-  .swap { position: relative; display: inline-block; border-radius: 4px; }
-  .swap .real, .swap .tok { transition: opacity .35s ease; }
-  .swap .tok { position: absolute; left: 0; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 .35em; border-radius: 4px; background: var(--tape); color: var(--tape-text); border-left: 4px solid var(--sw); opacity: 0; white-space: nowrap; font-size: .8em; }
-  .swap .hl { position: absolute; inset: 8% -2px; background: var(--sw); border-radius: 3px; z-index: -1; transform-origin: left; transform: scaleX(0); transition: transform .45s cubic-bezier(.2,.7,.2,1); }
+  .specimen { margin: 56px 0 0; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 28px 28px 22px; overflow: hidden; }
+  .specimen .line { font-family: var(--mono); font-size: clamp(.9rem, 2.1vw, 1.45rem); white-space: nowrap; overflow-x: auto; padding: 6px 0; }
+  .specimen .caption { margin-top: 14px; font-size: .95rem; color: var(--ink-soft); display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .swap { position: relative; display: inline-block; isolation: isolate; }
+  .swap .tok { display: none; align-items: center; padding: .1em .4em; border-radius: 4px; background: var(--tape); color: var(--tape-text); border-left: 4px solid var(--sw); white-space: nowrap; font-size: .8em; }
+  .swap .hl { position: absolute; inset: 8% -2px; background: var(--sw); border-radius: 3px; z-index: -1; transform-origin: left; transform: scaleX(0); transition: transform .45s cubic-bezier(.2,.7,.2,1), opacity .2s; }
   .specimen.marked .swap .hl { transform: scaleX(1); }
-  /* taped: the token replaces the value in the flow, so the line closes up around it */
   .specimen.taped .swap .real { display: none; }
   .specimen.taped .swap .hl { opacity: 0; }
-  .specimen.taped .swap .tok { position: static; display: inline-flex; opacity: 1; padding: .1em .4em; }
-  .swap { isolation: isolate; }
+  .specimen.taped .swap .tok { display: inline-flex; }
 
-  /* demo */
-  .demo-controls { display: grid; grid-template-columns: auto 1fr; gap: 24px; margin-top: 32px; align-items: start; }
-  @media (max-width: 760px) { .demo-controls { grid-template-columns: 1fr; } }
-  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 3px; }
-  .seg button { border: 0; background: none; font: 500 .95rem var(--sans); color: var(--ink-soft); padding: 7px 14px; border-radius: 6px; cursor: pointer; }
-  .seg button[aria-checked="true"] { background: var(--ink); color: var(--paper); }
-  .hint { font-size: .9rem; color: var(--ink-soft); margin-top: 8px; max-width: 34ch; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; padding: 0; list-style: none; }
+  .demo-controls { display: grid; grid-template-columns: auto auto 1fr; gap: 28px; margin-top: 32px; align-items: start; }
+  @media (max-width: 900px) { .demo-controls { grid-template-columns: 1fr; } }
+  .hint { font-size: .9rem; color: var(--ink-soft); margin-top: 8px; max-width: 36ch; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; padding: 0; list-style: none; }
   .chips li { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); border-radius: 7px; padding: 3px 4px 3px 9px; font-size: .92rem; }
   .chips li i { width: 11px; height: 11px; border-radius: 3px; background: var(--hl-person); }
   .chips button { border: 0; background: none; color: var(--ink-soft); cursor: pointer; font-size: 1rem; padding: 0 6px; border-radius: 4px; }
   .chips button:hover { background: var(--paper); color: var(--ink); }
-  .add { display: flex; gap: 8px; max-width: 480px; }
+  .add { display: flex; gap: 8px; max-width: 460px; }
   .add input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 9px 12px; font: 400 .95rem var(--sans); }
   .label { font-weight: 500; font-size: .95rem; margin-bottom: 6px; display: block; }
-  .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
+  .scenarios { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 28px; }
+  .scenarios button { border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); border-radius: 999px; padding: 7px 14px; font: 500 .92rem var(--sans); cursor: pointer; }
+  .scenarios button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
   @media (max-width: 860px) { .panes { grid-template-columns: 1fr; } }
   .pane { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; display: flex; flex-direction: column; }
   .pane h3 { font: 500 .9rem var(--sans); color: var(--ink-soft); padding: 10px 16px; border-bottom: 1px solid var(--line); letter-spacing: 0; }
   .doc { font-family: var(--mono); font-size: .875rem; line-height: 1.7; padding: 16px 18px; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; tab-size: 4; }
-  .editor { position: relative; min-height: 25rem; flex: 1; }
+  .editor { position: relative; min-height: 20rem; flex: 1; }
   .editor .back { position: absolute; inset: 0; overflow: hidden; color: transparent; pointer-events: none; }
-  .editor textarea { position: relative; display: block; width: 100%; height: 100%; min-height: 25rem; resize: none; border: 0; background: transparent; color: var(--ink); caret-color: var(--ink); outline: none; }
+  .editor textarea { position: relative; display: block; width: 100%; height: 100%; min-height: 20rem; resize: none; border: 0; background: transparent; color: var(--ink); caret-color: var(--ink); outline: none; }
   .mark { background: var(--sw); border-radius: 2px; color: transparent; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
-  @media (prefers-color-scheme: dark) { .mark { background: color-mix(in srgb, var(--sw) 32%, transparent); box-shadow: inset 0 -2px 0 var(--sw); } }
-  .mark.on { box-shadow: 0 0 0 2px var(--ink); }
+  :root[data-theme="dark"] .mark { background: color-mix(in srgb, var(--sw) 32%, transparent); box-shadow: inset 0 -2px 0 var(--sw); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mark { background: color-mix(in srgb, var(--sw) 32%, transparent); box-shadow: inset 0 -2px 0 var(--sw); } }
+  .mark.on { outline: 2px solid var(--ink); }
   .tape { background: var(--tape); color: var(--tape-text); border-radius: 3px; padding: .05em .35em; border-left: 3px solid var(--sw); box-decoration-break: clone; -webkit-box-decoration-break: clone; cursor: default; }
   .tape.on { box-shadow: 0 0 0 2px var(--sw); }
-  .ai-view { min-height: 25rem; flex: 1; }
+  .ai-view { min-height: 20rem; flex: 1; }
   .summary { margin-top: 14px; font-size: .98rem; }
   .summary span { color: var(--ink-soft); }
   .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; font-size: .9rem; color: var(--ink-soft); }
   .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
 
-  /* journey */
+  .uses { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0; margin-top: 36px; border-top: 1px solid var(--line); }
+  .use { padding: 22px 24px 22px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+  .use p { color: var(--ink-soft); font-size: .98rem; flex: 1; }
+  .use .ex { font-family: var(--mono); font-size: .82rem; color: var(--ink); }
+  .use button { align-self: flex-start; }
+
   .journey { display: grid; grid-template-columns: 300px 1fr; gap: 28px; margin-top: 36px; }
   @media (max-width: 860px) { .journey { grid-template-columns: 1fr; } }
   .stops { list-style: none; padding: 0; margin: 0; counter-reset: s; }
@@ -123,22 +150,19 @@
   .stage .who { display: inline-flex; align-items: center; gap: 8px; }
   .stage .who i { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
   .stage .who.out i { background: var(--warn); }
-  .stage pre { min-height: 15rem; }
+  .stage pre { min-height: 14rem; }
   .stage .note { padding: 0 18px 16px; color: var(--ink-soft); font-size: .95rem; }
 
-  /* what it hides */
   .kinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0; margin-top: 36px; border-top: 1px solid var(--line); }
   .kind { padding: 22px 22px 22px 0; border-bottom: 1px solid var(--line); }
   .kind h3 { display: flex; align-items: center; gap: 10px; }
   .kind h3 i { width: 26px; height: 12px; border-radius: 3px; background: var(--sw); }
   .kind p { color: var(--ink-soft); margin-top: 8px; font-size: .98rem; }
-  .kind code { color: var(--ink); }
   .keeps { margin-top: 28px; padding: 18px 20px; border-radius: 12px; border: 1px dashed var(--line); font-size: 1rem; }
 
-  /* results */
   .results { margin-top: 36px; display: grid; gap: 34px; }
   .result h3 { font-size: 1.05rem; }
-  .result .sub { color: var(--ink-soft); font-size: .92rem; margin-top: 4px; max-width: 70ch; }
+  .result .sub { color: var(--ink-soft); font-size: .92rem; margin-top: 4px; max-width: 72ch; }
   .bars { margin-top: 14px; display: grid; gap: 10px; }
   .bar { display: grid; grid-template-columns: minmax(150px, 260px) 1fr 70px; gap: 14px; align-items: center; font-size: .95rem; }
   @media (max-width: 640px) { .bar { grid-template-columns: 1fr 64px; } .bar .track { grid-column: 1 / -1; grid-row: 2; } }
@@ -149,7 +173,6 @@
   .honest ul { margin: 10px 0 0; padding-left: 20px; color: var(--ink-soft); }
   .honest li + li { margin-top: 6px; }
 
-  /* start */
   .start { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 36px; }
   @media (max-width: 860px) { .start { grid-template-columns: 1fr; } }
   .cmd { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; overflow: hidden; }
@@ -158,12 +181,15 @@
   .cmd pre { margin: 0; padding: 16px; overflow-x: auto; font-size: .85rem; line-height: 1.7; }
   .cmd + .cmd { margin-top: 16px; }
   .c { color: var(--ink-soft); }
+  ol.steps { margin: 16px 0 0; padding-left: 20px; color: var(--ink-soft); }
+  ol.steps li + li { margin-top: 6px; }
+  ol.steps b { color: var(--ink); }
 
-  /* rules + faq */
   .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 28px; margin-top: 36px; }
   .rules p { color: var(--ink-soft); margin-top: 6px; font-size: .98rem; }
   details { border-bottom: 1px solid var(--line); padding: 18px 0; }
   details summary { cursor: pointer; font-weight: 700; font-size: 1.08rem; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+  details summary::-webkit-details-marker { display: none; }
   details summary::after { content: "+"; color: var(--ink-soft); font-weight: 400; }
   details[open] summary::after { content: "–"; }
   details p { color: var(--ink-soft); margin-top: 10px; max-width: 72ch; }
@@ -184,159 +210,179 @@
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="2" y="4" width="20" height="2.5" rx="1.25" fill="var(--ink-soft)"/><rect x="2" y="10" width="20" height="4" rx="1" fill="var(--ink)"/><rect x="2" y="17.5" width="12" height="2.5" rx="1.25" fill="var(--ink-soft)"/></svg>
       hushmask
     </a>
-    <nav class="links" aria-label="Sections">
-      <a href="#try">Try it</a>
-      <a href="#journey">How it works</a>
-      <a href="#results">Results</a>
-      <a href="#start">Get started</a>
+    <nav class="links" data-i18n-attr="aria-label:navLabel" aria-label="Sections">
+      <a href="#try" data-i18n="navTry">Try it</a>
+      <a href="#uses" data-i18n="navUses">Where it helps</a>
+      <a href="#journey" data-i18n="navHow">How it works</a>
+      <a href="#results" data-i18n="navResults">Results</a>
+      <a href="#start" data-i18n="navStart">Get started</a>
     </nav>
-    <a class="btn gh" href="https://github.com/bilal-py/hushmask">Source on GitHub</a>
+    <div class="tools">
+      <div class="seg" role="radiogroup" aria-label="Language / Sprache">
+        <button role="radio" data-lang="en" aria-checked="true">EN</button>
+        <button role="radio" data-lang="de" aria-checked="false">DE</button>
+      </div>
+      <button class="icon-btn" id="theme" type="button" data-i18n-attr="aria-label:themeLabel" aria-label="Switch light or dark mode">
+        <svg class="sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <a class="btn small gh" href="https://github.com/bilal-py/hushmask">GitHub</a>
+    </div>
   </div>
 </header>
 
 <main id="top">
   <div class="wrap hero">
-    <h1>Tell the AI everything except who you are.</h1>
-    <p class="lede">hushmask hides names, card numbers, accounts and other personal details before your text reaches an AI, then puts them back in the answer. It runs on your machine, and any app that talks to OpenAI-style APIs can use it by changing one URL.</p>
+    <h1 data-i18n="heroTitle">Tell the AI everything except who you are.</h1>
+    <p class="lede" data-i18n="heroLede">hushmask hides names, emails, phone numbers, IBANs and other personal details before your text reaches an AI, then puts them back in the answer. It runs on your machine, and any app that talks to an OpenAI-style API can use it by changing one URL.</p>
     <div class="ctas">
-      <a class="btn primary" href="#try">Try it in your browser</a>
-      <a class="btn" href="#start">Run it yourself</a>
+      <a class="btn primary" href="#try" data-i18n="heroTry">Try it in your browser</a>
+      <a class="btn" href="#start" data-i18n="heroRun">Run it yourself</a>
     </div>
 
-    <figure class="specimen" id="specimen" aria-label="A statement line before and after masking">
-      <div class="line">14/11/2026  NEFT FROM <span class="swap" style="--sw: var(--hl-person)"><span class="hl"></span><span class="real">PRIYA MEHTA</span><span class="tok">PERSON_4aee58</span></span> SALARY  85,000.00 Cr</div>
-      <div class="line">13/11/2026  POS <span class="swap" style="--sw: var(--hl-number)"><span class="hl"></span><span class="real">4111 1111 1111 1111</span><span class="tok">CARD_3ef187</span></span> AMAZON PAY  1,299.00 Dr</div>
-      <div class="line">12/11/2026  UPI/<span class="swap" style="--sw: var(--hl-contact)"><span class="hl"></span><span class="real">rahul.sharma@okhdfcbank</span><span class="tok">UPI_29353b</span></span>/SWIGGY  450.00 Dr</div>
+    <figure class="specimen" id="specimen" aria-labelledby="specimen-state">
+      <div id="specimen-lines"></div>
       <figcaption class="caption">
-        <span id="specimen-state">What you see.</span>
-        <button class="btn" id="specimen-toggle" type="button">Show what the AI sees</button>
+        <span id="specimen-state"></span>
+        <button class="btn small" id="specimen-toggle" type="button"></button>
       </figcaption>
     </figure>
   </div>
 
-  <!-- TRY IT -->
   <section id="try">
     <div class="wrap">
-      <h2>See what the AI gets.</h2>
-      <p class="lede">Type or paste anything. Highlighted values never leave your machine; the right side is exactly what an AI provider would receive. This demo runs in your browser with hushmask's pattern rules. Nothing is sent anywhere.</p>
+      <h2 data-i18n="tryTitle">See what the AI gets.</h2>
+      <p class="lede" data-i18n="tryLede">Pick an example or paste your own text. Highlighted values never leave your machine; the right side is exactly what an AI provider would receive. This demo runs in your browser with hushmask's pattern rules. Nothing is sent anywhere.</p>
+
+      <div class="scenarios" id="scenarios" role="group" data-i18n-attr="aria-label:scenariosLabel" aria-label="Examples"></div>
 
       <div class="demo-controls">
         <div>
-          <span class="label" id="preset-label">What to hide</span>
+          <span class="label" id="preset-label" data-i18n="presetLabel">What to hide</span>
           <div class="seg" role="radiogroup" aria-labelledby="preset-label">
-            <button role="radio" aria-checked="true" data-preset="finance">Finance</button>
-            <button role="radio" aria-checked="false" data-preset="strict">Strict</button>
+            <button role="radio" aria-checked="true" data-preset="strict" data-i18n="strict">Strict</button>
+            <button role="radio" aria-checked="false" data-preset="finance" data-i18n="finance">Finance</button>
           </div>
-          <p class="hint" id="preset-hint">Keeps merchants, amounts and cities, so the AI can still categorize spending.</p>
+          <p class="hint" id="preset-hint"></p>
         </div>
         <div>
-          <span class="label">Always hide</span>
+          <span class="label" data-i18n="alwaysHide">Always hide</span>
           <ul class="chips" id="chips"></ul>
           <form class="add" id="add-known">
-            <input id="known-input" placeholder="Add a name, e.g. Priya Mehta" aria-label="Name to always hide" autocomplete="off" />
-            <button class="btn" type="submit">Add</button>
+            <input id="known-input" data-i18n-attr="placeholder:addPlaceholder" placeholder="Add a name" aria-label="Name to always hide" autocomplete="off" />
+            <button class="btn" type="submit" data-i18n="add">Add</button>
           </form>
-          <p class="hint" style="max-width:60ch">Names nobody listed, like "Priya Mehta" below, need the local names model that comes with hushmask. Patterns alone can't know a word is a name, so add it here and watch it disappear.</p>
         </div>
+        <p class="hint" style="max-width:44ch;margin-top:28px" data-i18n="namesHint">Names and addresses nobody listed need the local names model that comes with hushmask; patterns alone can't know a word is a name. In this demo, add them to "Always hide" and watch them disappear.</p>
       </div>
 
       <div class="panes">
         <div class="pane">
-          <h3>Your text</h3>
+          <h3 data-i18n="yourText">Your text</h3>
           <div class="editor">
             <div class="doc back" id="back" aria-hidden="true"></div>
-            <textarea class="doc" id="text" spellcheck="false" aria-label="Text to mask"></textarea>
+            <textarea class="doc" id="text" spellcheck="false" data-i18n-attr="aria-label:yourText" aria-label="Your text"></textarea>
           </div>
         </div>
         <div class="pane">
-          <h3>What the AI receives</h3>
+          <h3 data-i18n="aiReceives">What the AI receives</h3>
           <div class="doc ai-view" id="ai" aria-live="polite"></div>
         </div>
       </div>
       <p class="summary" id="summary"></p>
-      <div class="legend" aria-label="Colour key">
-        <span><i style="background:var(--hl-person)"></i>people</span>
-        <span><i style="background:var(--hl-number)"></i>card, account and ID numbers</span>
-        <span><i style="background:var(--hl-contact)"></i>email, phone, UPI</span>
-        <span><i style="background:var(--hl-place)"></i>addresses and places</span>
+      <div class="legend">
+        <span><i style="background:var(--hl-person)"></i><span data-i18n="lgPeople">people</span></span>
+        <span><i style="background:var(--hl-number)"></i><span data-i18n="lgNumbers">IBAN, card and ID numbers</span></span>
+        <span><i style="background:var(--hl-contact)"></i><span data-i18n="lgContact">email and phone</span></span>
+        <span><i style="background:var(--hl-place)"></i><span data-i18n="lgPlaces">addresses and places</span></span>
       </div>
     </div>
   </section>
 
-  <!-- JOURNEY -->
+  <section id="uses">
+    <div class="wrap">
+      <h2 data-i18n="usesTitle">Use cloud AI on the text you actually have.</h2>
+      <p class="lede" data-i18n="usesLede">The useful text is usually the personal kind. hushmask lets you hand it over without handing over the people in it.</p>
+      <div class="uses" id="uses-list"></div>
+    </div>
+  </section>
+
   <section id="journey">
     <div class="wrap">
-      <h2>One request, four stops.</h2>
-      <p class="lede">hushmask sits between your app and the AI and pretends to be the AI. Your app changes one setting, the base URL, and everything else stays the same.</p>
+      <h2 data-i18n="howTitle">One request, four stops.</h2>
+      <p class="lede" data-i18n="howLede">hushmask sits between your app and the AI and pretends to be the AI. Your app changes one setting, the base URL, and everything else stays the same.</p>
       <div class="journey">
         <ol class="stops" id="stops">
-          <li><button data-step="0" aria-current="step"><span><b>Your app asks</b>A normal request, real names and all.</span></button></li>
-          <li><button data-step="1"><span><b>hushmask masks it</b>Personal values become tokens. The real ones stay in memory.</span></button></li>
-          <li><button data-step="2"><span><b>The AI answers</b>It works with tokens and never sees who's involved.</span></button></li>
-          <li><button data-step="3"><span><b>hushmask restores it</b>Tokens turn back into real values for your app.</span></button></li>
+          <li><button data-step="0" aria-current="step"><span><b data-i18n="s0t">Your app asks</b><span data-i18n="s0d">A normal request, real names and all.</span></span></button></li>
+          <li><button data-step="1"><span><b data-i18n="s1t">hushmask masks it</b><span data-i18n="s1d">Personal values become tokens. The real ones stay in memory.</span></span></button></li>
+          <li><button data-step="2"><span><b data-i18n="s2t">The AI answers</b><span data-i18n="s2d">It works with tokens and never sees who's involved.</span></span></button></li>
+          <li><button data-step="3"><span><b data-i18n="s3t">hushmask restores it</b><span data-i18n="s3d">Tokens turn back into real values for your app.</span></span></button></li>
         </ol>
         <div class="stage">
-          <header><span class="who" id="stage-who"><i></i><span id="stage-where">On your machine</span></span><span id="stage-label">POST /v1/chat/completions</span></header>
+          <header><span class="who" id="stage-who"><i></i><span id="stage-where"></span></span><span id="stage-label"></span></header>
           <pre class="doc" id="stage-body"></pre>
           <p class="note" id="stage-note"></p>
-          <div style="padding:0 18px 18px"><button class="btn" id="next-step" type="button">Next stop</button></div>
+          <div style="padding:0 18px 18px"><button class="btn small" id="next-step" type="button"></button></div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- WHAT IT HIDES -->
   <section id="hides">
     <div class="wrap">
-      <h2>Hides who. Keeps what.</h2>
-      <p class="lede">Hiding everything is easy and useless: an AI that can't see "SWIGGY 450.00" can't tell you that you spent it on food. hushmask hides the person and leaves the task.</p>
+      <h2 data-i18n="hidesTitle">Hides who. Keeps what.</h2>
+      <p class="lede" data-i18n="hidesLede">Hiding everything is easy and useless: an AI that can't read the request can't help with it. hushmask hides the people and keeps the subject, the dates, the amounts and the words that matter.</p>
       <div class="kinds">
-        <div class="kind" style="--sw:var(--hl-person)"><h3><i></i>People</h3><p>Your own name from your list, and anyone else's from a local names model. "Mr Sharma" links to "Rahul Sharma" so the AI knows it's the same person.</p></div>
-        <div class="kind" style="--sw:var(--hl-number)"><h3><i></i>Numbers that identify you</h3><p>Cards (Luhn-checked), IBANs (mod 97), Aadhaar (Verhoeff), PAN, IFSC, and account numbers labelled as such. A random number that fails the checksum is left alone.</p></div>
-        <div class="kind" style="--sw:var(--hl-contact)"><h3><i></i>Ways to reach you</h3><p>Emails, phone numbers in Indian and international formats, UPI IDs like <code>name@okhdfcbank</code>, IP addresses.</p></div>
-        <div class="kind" style="--sw:var(--hl-place)"><h3><i></i>Where you live</h3><p>Street addresses from your list or the names model. Cities only in the strict preset: on a statement they're part of the merchant.</p></div>
+        <div class="kind" style="--sw:var(--hl-person)"><h3><i></i><span data-i18n="k1t">People</span></h3><p data-i18n="k1d">Names from your "always hide" list, and anyone else's from a local names model. "Mr Becker" links to "Jonas Becker", so the AI knows it's the same person.</p></div>
+        <div class="kind" style="--sw:var(--hl-contact)"><h3><i></i><span data-i18n="k2t">Ways to reach you</span></h3><p data-i18n="k2d">Email addresses, including ones like anna.müller@…, and phone numbers in international and national formats.</p></div>
+        <div class="kind" style="--sw:var(--hl-number)"><h3><i></i><span data-i18n="k3t">Numbers that identify you</span></h3><p data-i18n="k3d">IBANs and card numbers, checked with their checksums so random numbers are left alone, and account numbers next to a label. Indian ID formats too.</p></div>
+        <div class="kind" style="--sw:var(--hl-place)"><h3><i></i><span data-i18n="k4t">Where you live</span></h3><p data-i18n="k4d">Street addresses from your list or the names model. Cities in the strict preset only.</p></div>
       </div>
-      <p class="keeps"><b>Stays readable:</b> merchants, amounts, dates, currencies and words like NEFT, UPI or refund. Same value, same token, every time, so a whole conversation stays consistent and the provider's prompt cache keeps working.</p>
+      <p class="keeps" data-i18n="keeps"><b>Same value, same token, every time.</b> A whole conversation stays consistent, the AI can refer back to "PERSON_4aee58", and the provider's prompt cache keeps working.</p>
     </div>
   </section>
 
-  <!-- RESULTS -->
   <section id="results">
     <div class="wrap">
-      <h2>Measured, not promised.</h2>
-      <p class="lede">"Privacy-first" is easy to say. These are the share of personal values fully hidden on labelled data, with every setup, including the ones that look bad.</p>
+      <h2 data-i18n="resTitle">Measured, not promised.</h2>
+      <p class="lede" data-i18n="resLede">"Privacy-first" is easy to say. These bars show the share of personal values fully hidden on labelled data, for every setup, including the ones that look bad.</p>
       <div class="results" id="results-list"></div>
       <div class="honest">
-        <h3>Read these numbers with care</h3>
+        <h3 data-i18n="caveatsTitle">Read these numbers with care</h3>
         <ul id="caveats"></ul>
       </div>
     </div>
   </section>
 
-  <!-- START -->
   <section id="start">
     <div class="wrap">
-      <h2>Running in a few minutes.</h2>
-      <p class="lede">Python 3.12 and <a href="https://docs.astral.sh/uv/">uv</a>. The names model is optional and heavy (about 1.7 GB with PyTorch), so it's a separate extra.</p>
+      <h2 data-i18n="startTitle">Running in a few minutes.</h2>
+      <p class="lede" data-i18n="startLede">One setup script installs everything it needs. Node.js 20+ is only needed for the dashboard.</p>
       <div class="start">
         <div>
           <div class="cmd">
-            <header><span>Install and start</span><button type="button" data-copy="install">Copy</button></header>
-            <pre id="install">git clone https://github.com/bilal-py/hushmask
+            <header><span>Windows (PowerShell)</span><button type="button" data-copy="win" data-i18n="copy">Copy</button></header>
+            <pre id="win">git clone https://github.com/bilal-py/hushmask
 cd hushmask
-uv sync --extra proxy --extra ner
-cd web && npm install && npm run build && cd ..
-uv run hushmask serve</pre>
+.\setup.ps1
+uv run hushmask serve --open</pre>
           </div>
           <div class="cmd">
-            <header><span>Just try it on a file</span><button type="button" data-copy="cli">Copy</button></header>
-            <pre id="cli">uv run hushmask mask statement.txt \
-  --known "PERSON=Your Name" --preset finance --ner</pre>
+            <header><span>macOS / Linux</span><button type="button" data-copy="nix" data-i18n="copy">Copy</button></header>
+            <pre id="nix">git clone https://github.com/bilal-py/hushmask
+cd hushmask
+./setup.sh
+uv run hushmask serve --open</pre>
           </div>
+          <ol class="steps">
+            <li data-i18n="st1"><b>Playground:</b> paste any text and see what an AI would get.</li>
+            <li data-i18n="st2"><b>Apps:</b> add one, pick a provider (Ollama keeps everything local), copy its URL and key.</li>
+            <li data-i18n="st3"><b>Names model:</b> run the setup with <code>-Names</code> (Windows) or <code>--names</code> to also catch names nobody listed. About 1.7 GB.</li>
+          </ol>
         </div>
         <div>
           <div class="cmd">
-            <header><span>Point any OpenAI client at it</span><button type="button" data-copy="sdk">Copy</button></header>
+            <header><span data-i18n="sdkTitle">Point any OpenAI client at it</span><button type="button" data-copy="sdk" data-i18n="copy">Copy</button></header>
             <pre id="sdk">from openai import OpenAI
 
 client = OpenAI(
@@ -345,40 +391,38 @@ client = OpenAI(
 )
 reply = client.chat.completions.create(
     model="gpt-4o-mini",
-    messages=[{"role": "user", "content": statement}],
+    messages=[{"role": "user", "content": email_text}],
 )
 print(reply.choices[0].message.content)  <span class="c"># real names back</span></pre>
           </div>
-          <p class="hint" style="max-width:none;margin-top:14px">Then open <code>http://127.0.0.1:8700/dashboard/</code> to add apps (OpenAI, Gemini, Ollama, OpenRouter, Groq or any compatible URL), choose what each one hides, and copy its key.</p>
+          <p class="hint" style="max-width:none;margin-top:14px" data-i18n="providers">Works with OpenAI, Gemini, Ollama, OpenRouter, Groq and anything else that speaks the OpenAI chat API.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- RULES -->
   <section id="rules">
     <div class="wrap">
-      <h2>Rules it doesn't bend.</h2>
+      <h2 data-i18n="rulesTitle">Rules it doesn't bend.</h2>
       <div class="rules">
-        <div><h3>Fails closed</h3><p>After masking, the text is scanned again. If anything detectable is still visible, the request is refused instead of sent.</p></div>
-        <div><h3>Real values stay in memory</h3><p>The map from tokens to values lives for the request. Logs and stats hold counts, never values.</p></div>
-        <div><h3>Won't send what it can't mask</h3><p>Images, audio and files are refused unless you allow them for an app, because there's no way to hide what's in them.</p></div>
-        <div><h3>Dashboard is yours alone</h3><p>It only answers on localhost and needs a header other websites can't add, so a page in another tab can't read your apps.</p></div>
+        <div><h3 data-i18n="r1t">Fails closed</h3><p data-i18n="r1d">After masking, the text is scanned again. If anything detectable is still visible, the request is refused instead of sent.</p></div>
+        <div><h3 data-i18n="r2t">Real values stay in memory</h3><p data-i18n="r2d">The map from tokens to values lives for the request. Logs and stats hold counts, never values.</p></div>
+        <div><h3 data-i18n="r3t">Won't send what it can't mask</h3><p data-i18n="r3d">Images, audio and files are refused unless you allow them for an app, because there's no way to hide what's in them.</p></div>
+        <div><h3 data-i18n="r4t">The dashboard is yours alone</h3><p data-i18n="r4d">It only answers on localhost and needs a header other websites can't add, so a page in another tab can't read your apps.</p></div>
       </div>
     </div>
   </section>
 
-  <!-- FAQ -->
   <section id="faq">
     <div class="wrap">
-      <h2>Good to know</h2>
+      <h2 data-i18n="faqTitle">Good to know</h2>
       <div class="faq">
-        <details><summary>Is this anonymization?</summary><p>No. It hides who you are from the AI provider. Merchants, amounts, dates and places stay visible on purpose, and in combination they can still say a lot. If you need data nobody could ever link back to a person, this isn't that.</p></details>
-        <details><summary>Which AI providers work?</summary><p>Anything that speaks the OpenAI chat-completions API: OpenAI, Gemini's OpenAI-compatible endpoint, Ollama, OpenRouter, Groq, LM Studio and others. Each app in the dashboard can use a different one.</p></details>
-        <details><summary>Does it work with streaming?</summary><p>Your app can ask for a stream and it will work, but hushmask waits for the whole answer before sending it on. A token split across two chunks couldn't be put back reliably.</p></details>
-        <details><summary>What if the AI changes a token?</summary><p>Tokens are restored even if the model changes their case. A token the AI invents, or one hushmask never sent, is left as it is and counted, so you can see it in the dashboard.</p></details>
-        <details><summary>Does it need the internet?</summary><p>Only to reach the AI you choose, and once to download the names model. With Ollama, everything stays on your machine.</p></details>
-        <details><summary>Who's it for?</summary><p>Anyone who wants to use cloud AI on personal text without handing over who they are. It started as the privacy layer for Spence, a local-first expense tracker, and works with any app.</p></details>
+        <details><summary data-i18n="f1q">Is this anonymization?</summary><p data-i18n="f1a">No. It hides who you are from the AI provider. Dates, amounts, places and the subject stay visible on purpose, and in combination they can still say a lot. If you need data nobody could ever link back to a person, this isn't that.</p></details>
+        <details><summary data-i18n="f2q">Which AI providers work?</summary><p data-i18n="f2a">Anything that speaks the OpenAI chat-completions API: OpenAI, Gemini's OpenAI-compatible endpoint, Ollama, OpenRouter, Groq, LM Studio and others. Each app in the dashboard can use a different one.</p></details>
+        <details><summary data-i18n="f3q">Does it work with streaming?</summary><p data-i18n="f3a">Your app can ask for a stream and it will work, but hushmask waits for the whole answer before passing it on. A token split across two chunks couldn't be put back reliably.</p></details>
+        <details><summary data-i18n="f4q">What if the AI changes a token?</summary><p data-i18n="f4a">Tokens are restored even if the model changes their case. A token the AI invents, or one hushmask never sent, is left as it is and counted, so you can see it in the dashboard.</p></details>
+        <details><summary data-i18n="f5q">Does it need the internet?</summary><p data-i18n="f5a">Only to reach the AI you choose, and once to download the names model. With Ollama, everything stays on your machine.</p></details>
+        <details><summary data-i18n="f6q">Does it understand German?</summary><p data-i18n="f6a">Yes. Patterns work on any language, the names model is multilingual (90% of personal values hidden on German everyday text), and German labels like "Kontonummer" are recognised.</p></details>
       </div>
     </div>
   </section>
@@ -386,54 +430,224 @@ print(reply.choices[0].message.content)  <span class="c"># real names back</span
 
 <footer>
   <div class="wrap">
-    <span>hushmask is open source under the MIT licence.</span>
+    <span data-i18n="footer">hushmask is open source under the MIT licence.</span>
     <a href="https://github.com/bilal-py/hushmask">github.com/bilal-py/hushmask</a>
   </div>
 </footer>
 
 <script>
-// ---------------------------------------------------------------------------------------------
-// Results: filled from docs/eval/RESULTS.md. Share of personal values fully hidden.
-// ---------------------------------------------------------------------------------------------
-const RESULTS = [
-  {
-    title: 'Bank statements (synthetic, 300 statements, 3,217 personal values)',
-    sub: 'Indian and European formats, finance preset. Not one of 1,396 merchant names was touched, and nothing that wasn\'t personal got masked.',
-    rows: [
-      { name: 'Patterns only', value: 50.6 },
-      { name: '+ your name and address', value: 73.0 },
-      { name: '+ local names model', value: 99.4 },
-    ],
-  },
-  {
-    title: 'Everyday English text (ai4privacy, 500 records)',
-    sub: 'Emails, forms and letters hushmask was never tuned for. With the names model on, 200 ordinary words got masked too (things like "Volunteer" or "Parent").',
-    rows: [
-      { name: 'Patterns only', value: 26.5 },
-      { name: '+ local names model', value: 87.0 },
-    ],
-  },
-  {
-    title: 'Everyday German text (ai4privacy, 300 records)',
-    sub: 'Same, in German. 106 ordinary words masked with the names model on, mostly capitalized words like "Hallo".',
-    rows: [
-      { name: 'Patterns only', value: 25.6 },
-      { name: '+ local names model', value: 90.0 },
-    ],
-  },
-];
-const CAVEATS = [
-  'The bank statements were generated by the same project that wrote the detectors, so they flatter it. The ai4privacy numbers are the honest ones.',
-  'Bars show values <b>fully</b> hidden. Half a surname or part of a card number counts as leaked.',
-  'On ai4privacy, most leaks are card numbers that are random digits failing the card checksum, and street addresses. hushmask also doesn\'t look for usernames, passwords, dates of birth or ID numbers; those are reported separately, not hidden in the totals.',
-  'The first run found accented emails (anna.müller@…) and several national phone formats leaking. Both were fixed and measured again; these are the numbers after the fix.',
-  'Full tables, method and the commands to reproduce: <a href="https://github.com/bilal-py/hushmask/blob/main/docs/eval/RESULTS.md">docs/eval/RESULTS.md</a>.',
-];
+// =============================================================================================
+// Translations. English lives in the HTML (read on load); German is here.
+// =============================================================================================
+const DE = {
+  navLabel: 'Abschnitte', navTry: 'Ausprobieren', navUses: 'Wofür', navHow: "So funktioniert's", navResults: 'Ergebnisse', navStart: 'Loslegen',
+  themeLabel: 'Hell oder dunkel umschalten',
+  heroTitle: 'Erzähl der KI alles, außer wer du bist.',
+  heroLede: 'hushmask verbirgt Namen, E-Mail-Adressen, Telefonnummern, IBANs und andere persönliche Daten, bevor dein Text eine KI erreicht, und setzt sie in der Antwort wieder ein. Es läuft auf deinem Rechner, und jede App, die eine OpenAI-kompatible API nutzt, kann es verwenden, indem sie eine URL ändert.',
+  heroTry: 'Im Browser ausprobieren', heroRun: 'Selbst starten',
+  tryTitle: 'Sieh, was die KI bekommt.',
+  tryLede: 'Wähle ein Beispiel oder füge eigenen Text ein. Markierte Werte verlassen deinen Rechner nie; rechts steht genau das, was ein KI-Anbieter erhalten würde. Diese Demo läuft in deinem Browser mit den Muster-Regeln von hushmask. Es wird nichts gesendet.',
+  scenariosLabel: 'Beispiele', presetLabel: 'Was verbergen', strict: 'Streng', finance: 'Finanzen',
+  alwaysHide: 'Immer verbergen', addPlaceholder: 'Namen hinzufügen', add: 'Hinzufügen',
+  namesHint: 'Namen und Adressen, die niemand eingetragen hat, braucht das lokale Namensmodell von hushmask; Muster allein können nicht wissen, dass ein Wort ein Name ist. Trag sie in dieser Demo unter „Immer verbergen“ ein und sieh zu, wie sie verschwinden.',
+  yourText: 'Dein Text', aiReceives: 'Was die KI bekommt',
+  lgPeople: 'Personen', lgNumbers: 'IBAN-, Karten- und Ausweisnummern', lgContact: 'E-Mail und Telefon', lgPlaces: 'Adressen und Orte',
+  usesTitle: 'Nutze Cloud-KI für die Texte, die du wirklich hast.',
+  usesLede: 'Die nützlichen Texte sind meistens die persönlichen. Mit hushmask gibst du sie weiter, ohne die Menschen darin preiszugeben.',
+  howTitle: 'Eine Anfrage, vier Stationen.',
+  howLede: 'hushmask sitzt zwischen deiner App und der KI und gibt sich als die KI aus. Deine App ändert eine Einstellung, die Basis-URL, und alles andere bleibt gleich.',
+  s0t: 'Deine App fragt', s0d: 'Eine normale Anfrage, mit echten Namen.',
+  s1t: 'hushmask maskiert', s1d: 'Persönliche Werte werden zu Platzhaltern. Die echten bleiben im Speicher.',
+  s2t: 'Die KI antwortet', s2d: 'Sie arbeitet mit Platzhaltern und sieht nie, wer beteiligt ist.',
+  s3t: 'hushmask setzt zurück', s3d: 'Platzhalter werden für deine App wieder zu echten Werten.',
+  hidesTitle: 'Verbirgt das Wer. Behält das Was.',
+  hidesLede: 'Alles zu verbergen ist einfach und nutzlos: Eine KI, die die Anfrage nicht lesen kann, kann nicht helfen. hushmask verbirgt die Menschen und behält das Thema, die Daten, die Beträge und die Wörter, auf die es ankommt.',
+  k1t: 'Personen', k1d: 'Namen aus deiner Liste „Immer verbergen“ und alle anderen über ein lokales Namensmodell. „Herr Becker“ wird mit „Jonas Becker“ verknüpft, damit die KI weiß, dass es dieselbe Person ist.',
+  k2t: 'Wege, dich zu erreichen', k2d: 'E-Mail-Adressen, auch solche wie anna.müller@…, und Telefonnummern in internationalen und nationalen Formaten.',
+  k3t: 'Nummern, die dich identifizieren', k3d: 'IBANs und Kartennummern, geprüft über ihre Prüfsummen, damit zufällige Zahlen stehen bleiben, und Kontonummern neben einer Bezeichnung. Auch indische Ausweisformate.',
+  k4t: 'Wo du wohnst', k4d: 'Straßenadressen aus deiner Liste oder über das Namensmodell. Städte nur in der strengen Voreinstellung.',
+  keeps: '<b>Gleicher Wert, gleicher Platzhalter, jedes Mal.</b> Ein ganzes Gespräch bleibt stimmig, die KI kann sich auf „PERSON_4aee58“ beziehen, und der Prompt-Cache des Anbieters funktioniert weiter.',
+  resTitle: 'Gemessen, nicht versprochen.',
+  resLede: '„Privacy-first“ ist schnell gesagt. Die Balken zeigen den Anteil persönlicher Werte, die auf gelabelten Daten vollständig verborgen wurden, für jede Variante, auch die, die schlecht aussehen.',
+  caveatsTitle: 'Diese Zahlen mit Vorsicht lesen',
+  startTitle: 'In wenigen Minuten startklar.',
+  startLede: 'Ein Setup-Skript installiert alles, was gebraucht wird. Node.js 20+ ist nur für das Dashboard nötig.',
+  copy: 'Kopieren',
+  st1: '<b>Playground:</b> beliebigen Text einfügen und sehen, was eine KI bekäme.',
+  st2: '<b>Apps:</b> eine anlegen, Anbieter wählen (mit Ollama bleibt alles lokal), URL und Schlüssel kopieren.',
+  st3: '<b>Namensmodell:</b> Setup mit <code>-Names</code> (Windows) oder <code>--names</code> starten, um auch nicht eingetragene Namen zu finden. Etwa 1,7 GB.',
+  sdkTitle: 'Jeden OpenAI-Client darauf zeigen lassen',
+  providers: 'Funktioniert mit OpenAI, Gemini, Ollama, OpenRouter, Groq und allem, was die OpenAI-Chat-API spricht.',
+  rulesTitle: 'Regeln ohne Ausnahme.',
+  r1t: 'Im Zweifel blockieren', r1d: 'Nach dem Maskieren wird der Text erneut geprüft. Ist noch etwas Erkennbares sichtbar, wird die Anfrage abgelehnt statt gesendet.',
+  r2t: 'Echte Werte bleiben im Speicher', r2d: 'Die Zuordnung von Platzhaltern zu Werten lebt nur für die Anfrage. Logs und Statistiken enthalten Zahlen, nie Werte.',
+  r3t: 'Sendet nichts, was es nicht maskieren kann', r3d: 'Bilder, Audio und Dateien werden abgelehnt, außer du erlaubst sie für eine App, denn ihr Inhalt lässt sich nicht verbergen.',
+  r4t: 'Das Dashboard gehört nur dir', r4d: 'Es antwortet nur auf localhost und verlangt einen Header, den andere Websites nicht setzen können. Eine Seite in einem anderen Tab kann deine Apps also nicht lesen.',
+  faqTitle: 'Gut zu wissen',
+  f1q: 'Ist das Anonymisierung?', f1a: 'Nein. Es verbirgt vor dem KI-Anbieter, wer du bist. Daten, Beträge, Orte und das Thema bleiben absichtlich sichtbar und können zusammen noch viel verraten. Wenn du Daten brauchst, die nie mehr einer Person zugeordnet werden können, ist das hier nicht das Richtige.',
+  f2q: 'Welche KI-Anbieter funktionieren?', f2a: 'Alles, was die OpenAI-Chat-Completions-API spricht: OpenAI, der OpenAI-kompatible Endpunkt von Gemini, Ollama, OpenRouter, Groq, LM Studio und andere. Jede App im Dashboard kann einen anderen nutzen.',
+  f3q: 'Funktioniert Streaming?', f3a: 'Deine App kann einen Stream anfordern und es funktioniert, aber hushmask wartet auf die ganze Antwort, bevor es sie weitergibt. Ein Platzhalter, der auf zwei Teile verteilt ist, ließe sich nicht zuverlässig zurücksetzen.',
+  f4q: 'Was, wenn die KI einen Platzhalter verändert?', f4a: 'Platzhalter werden auch dann zurückgesetzt, wenn das Modell die Groß- und Kleinschreibung ändert. Einen Platzhalter, den die KI erfindet oder den hushmask nie gesendet hat, lässt es stehen und zählt ihn, damit du ihn im Dashboard siehst.',
+  f5q: 'Braucht es Internet?', f5a: 'Nur, um die KI deiner Wahl zu erreichen, und einmal, um das Namensmodell herunterzuladen. Mit Ollama bleibt alles auf deinem Rechner.',
+  f6q: 'Versteht es Deutsch?', f6a: 'Ja. Muster funktionieren in jeder Sprache, das Namensmodell ist mehrsprachig (90 % der persönlichen Werte auf deutschen Alltagstexten verborgen), und deutsche Bezeichnungen wie „Kontonummer“ werden erkannt.',
+  footer: 'hushmask ist Open Source unter der MIT-Lizenz.',
+};
+const EN = {};
+document.querySelectorAll('[data-i18n]').forEach((el) => { EN[el.dataset.i18n] = el.innerHTML; });
+document.querySelectorAll('[data-i18n-attr]').forEach((el) => {
+  for (const pair of el.dataset.i18nAttr.split(',')) { const [attr, key] = pair.split(':'); EN[key] ??= el.getAttribute(attr); }
+});
 
-// ---------------------------------------------------------------------------------------------
-// A small port of hushmask's pattern rules, so the demo runs with no server.
-// The real thing adds a names model and a leak check; see src/hushmask/detectors.py.
-// ---------------------------------------------------------------------------------------------
+// Text that the script renders, in both languages.
+const T = {
+  en: {
+    presetHints: { strict: 'Hides every kind of value hushmask can find.', finance: 'Keeps cities and bank codes, so an AI can still categorize spending.' },
+    summary: (n, list) => n ? `Hiding ${n} ${n === 1 ? 'value' : 'values'}: ${list}. <span>Hover a token to find where it came from.</span>` : 'Nothing to hide in this text.',
+    and: 'and', names: { PERSON: ['person', 'people'], ADDRESS: ['address', 'addresses'], EMAIL: ['email', 'emails'], PHONE: ['phone number', 'phone numbers'], UPI: ['UPI ID', 'UPI IDs'], IP: ['IP address', 'IP addresses'], CARD: ['card number', 'card numbers'], IBAN: ['IBAN', 'IBANs'], ACCOUNT: ['account number', 'account numbers'], AADHAAR: ['Aadhaar number', 'Aadhaar numbers'], PAN: ['PAN', 'PANs'], IFSC: ['IFSC code', 'IFSC codes'] },
+    remove: (v) => `Stop hiding ${v}`,
+    specimen: { you: 'What you see.', ai: 'What the AI sees.', showAi: 'Show what the AI sees', showYou: 'Show what you see' },
+    next: 'Next stop', again: 'Start again', tryThis: 'Try this example',
+  },
+  de: {
+    presetHints: { strict: 'Verbirgt alles, was hushmask finden kann.', finance: 'Behält Städte und Bankleitzahlen, damit eine KI Ausgaben weiter einordnen kann.' },
+    summary: (n, list) => n ? `${n} ${n === 1 ? 'Wert' : 'Werte'} verborgen: ${list}. <span>Fahr über einen Platzhalter, um seine Herkunft zu sehen.</span>` : 'In diesem Text gibt es nichts zu verbergen.',
+    and: 'und', names: { PERSON: ['Person', 'Personen'], ADDRESS: ['Adresse', 'Adressen'], EMAIL: ['E-Mail', 'E-Mails'], PHONE: ['Telefonnummer', 'Telefonnummern'], UPI: ['UPI-ID', 'UPI-IDs'], IP: ['IP-Adresse', 'IP-Adressen'], CARD: ['Kartennummer', 'Kartennummern'], IBAN: ['IBAN', 'IBANs'], ACCOUNT: ['Kontonummer', 'Kontonummern'], AADHAAR: ['Aadhaar-Nummer', 'Aadhaar-Nummern'], PAN: ['PAN', 'PANs'], IFSC: ['IFSC-Code', 'IFSC-Codes'] },
+    remove: (v) => `${v} nicht mehr verbergen`,
+    specimen: { you: 'Was du siehst.', ai: 'Was die KI sieht.', showAi: 'Zeigen, was die KI sieht', showYou: 'Zeigen, was du siehst' },
+    next: 'Nächste Station', again: 'Von vorn', tryThis: 'Beispiel ausprobieren',
+  },
+};
+
+// =============================================================================================
+// Examples (scenarios) for the demo and the "where it helps" section
+// =============================================================================================
+const SCENARIOS = {
+  email: {
+    label: { en: 'Email', de: 'E-Mail' }, known: ['Lena Hoffmann'],
+    use: { en: ['Draft and answer emails', 'Ask an AI to reply, summarize or translate mail full of names, addresses and bank details.'], de: ['E-Mails schreiben und beantworten', 'Lass eine KI Mails voller Namen, Adressen und Bankdaten beantworten, zusammenfassen oder übersetzen.'] },
+    text: {
+      en: `Hi Markus,
+
+please send the signed contract to Lena Hoffmann (lena.hoffmann@example.de, +49 151 23456789).
+The deposit goes to her IBAN DE89 3704 0044 0532 0130 00. She lives at Bergstraße 12, 10115 Berlin.
+Jonas Becker from accounting will pay the first invoice with card 4111 1111 1111 1111.
+
+Thanks,
+Sophie Wagner`,
+      de: `Hallo Markus,
+
+bitte schick den unterschriebenen Vertrag an Lena Hoffmann (lena.hoffmann@example.de, +49 151 23456789).
+Die Kaution geht auf ihre IBAN DE89 3704 0044 0532 0130 00. Sie wohnt in der Bergstraße 12, 10115 Berlin.
+Jonas Becker aus der Buchhaltung zahlt die erste Rechnung mit der Karte 4111 1111 1111 1111.
+
+Danke,
+Sophie Wagner`,
+    },
+  },
+  support: {
+    label: { en: 'Support ticket', de: 'Support-Ticket' }, known: ['Jonas Becker'],
+    use: { en: ['Triage support tickets', 'Let an AI sort, summarize and draft answers without seeing customers\' contact or payment details.'], de: ['Support-Tickets sortieren', 'Lass eine KI sortieren, zusammenfassen und Antworten entwerfen, ohne Kontakt- oder Zahlungsdaten zu sehen.'] },
+    text: {
+      en: `Support ticket #48213
+From: Jonas Becker <jonas.becker@example.com>
+Phone: +49 170 9876543
+
+Hi, my order hasn't arrived. I paid with card 5555 5555 5555 4444
+and it should go to Lindenallee 7, 50667 Köln. My colleague Mia Schulz
+ordered the same thing last week and had it in two days. Can you check?`,
+      de: `Support-Ticket #48213
+Von: Jonas Becker <jonas.becker@example.com>
+Telefon: +49 170 9876543
+
+Hallo, meine Bestellung ist nicht angekommen. Bezahlt habe ich mit der Karte
+5555 5555 5555 4444, Lieferadresse Lindenallee 7, 50667 Köln. Meine Kollegin
+Mia Schulz hat letzte Woche dasselbe bestellt und es nach zwei Tagen bekommen.`,
+    },
+  },
+  job: {
+    label: { en: 'Job application', de: 'Bewerbung' }, known: ['Elena Rossi'],
+    use: { en: ['Review CVs and applications', 'Compare candidates on skills and experience while their names, emails and phone numbers stay with you.'], de: ['Lebensläufe und Bewerbungen prüfen', 'Vergleiche Bewerbungen nach Fähigkeiten und Erfahrung, während Namen, E-Mails und Telefonnummern bei dir bleiben.'] },
+    text: {
+      en: `Application: Senior Data Analyst
+
+Dear Ms Wagner,
+
+I'm Elena Rossi and I currently work for a logistics company in Munich.
+You can reach me at elena.rossi@example.it or +39 347 1234567.
+My references are Dr. Thomas Klein (thomas.klein@example.de) and Anna Novak.`,
+      de: `Bewerbung: Senior Data Analyst
+
+Sehr geehrte Frau Wagner,
+
+ich bin Elena Rossi und arbeite derzeit bei einem Logistikunternehmen in München.
+Sie erreichen mich unter elena.rossi@example.it oder +39 347 1234567.
+Meine Referenzen sind Dr. Thomas Klein (thomas.klein@example.de) und Anna Novak.`,
+    },
+  },
+  statement: {
+    label: { en: 'Bank statement', de: 'Kontoauszug' }, known: ['Lena Hoffmann'], preset: 'finance',
+    use: { en: ['Understand your spending', 'Have an AI sort a statement into categories. Merchants and amounts stay, people and accounts don\'t.'], de: ['Ausgaben verstehen', 'Lass eine KI einen Kontoauszug in Kategorien sortieren. Händler und Beträge bleiben, Personen und Konten nicht.'] },
+    text: {
+      en: `Statement for Lena Hoffmann, IBAN DE89 3704 0044 0532 0130 00
+
+12/11/2026  CARD 4111 1111 1111 1111 REWE BERLIN          45.20 Dr
+13/11/2026  SEPA TRANSFER FROM JONAS BECKER SALARY     3,250.00 Cr
+14/11/2026  SEPA TRANSFER TO SOPHIE WAGNER RENT          950.00 Dr
+15/11/2026  STARBUCKS                                       4.80 Dr
+
+Questions? lena.hoffmann@example.de or +49 151 23456789`,
+      de: `Kontoauszug für Lena Hoffmann, IBAN DE89 3704 0044 0532 0130 00
+
+12.11.2026  KARTE 4111 1111 1111 1111 REWE BERLIN          45,20 S
+13.11.2026  SEPA-GUTSCHRIFT VON JONAS BECKER GEHALT    3.250,00 H
+14.11.2026  SEPA-ÜBERWEISUNG AN SOPHIE WAGNER MIETE      950,00 S
+15.11.2026  STARBUCKS                                        4,80 S
+
+Fragen? lena.hoffmann@example.de oder +49 151 23456789`,
+    },
+  },
+};
+
+// =============================================================================================
+// Results (from docs/eval/RESULTS.md): share of personal values fully hidden
+// =============================================================================================
+const RESULTS = {
+  en: [
+    { title: 'Everyday English text (ai4privacy, 500 records)', sub: 'Emails, forms and letters hushmask was never tuned for. With the names model on, 200 ordinary words were masked too ("Volunteer", "Parent").',
+      rows: [['Patterns only', 26.5], ['+ local names model', 87.0]] },
+    { title: 'Everyday German text (ai4privacy, 300 records)', sub: 'The same in German. 106 ordinary words were masked with the names model on, mostly capitalized words like "Hallo".',
+      rows: [['Patterns only', 25.6], ['+ local names model', 90.0]] },
+    { title: 'Bank statements (synthetic, 300 statements)', sub: 'Generated by this project, so it flatters the patterns. Not one of 1,396 merchant names was touched.',
+      rows: [['Patterns only', 50.6], ['+ your name and address', 73.0], ['+ local names model', 99.4]] },
+  ],
+  de: [
+    { title: 'Englische Alltagstexte (ai4privacy, 500 Datensätze)', sub: 'E-Mails, Formulare und Briefe, auf die hushmask nie abgestimmt wurde. Mit Namensmodell wurden auch 200 gewöhnliche Wörter maskiert („Volunteer“, „Parent“).',
+      rows: [['Nur Muster', 26.5], ['+ lokales Namensmodell', 87.0]] },
+    { title: 'Deutsche Alltagstexte (ai4privacy, 300 Datensätze)', sub: 'Dasselbe auf Deutsch. Mit Namensmodell wurden 106 gewöhnliche Wörter maskiert, meist großgeschriebene Wörter wie „Hallo“.',
+      rows: [['Nur Muster', 25.6], ['+ lokales Namensmodell', 90.0]] },
+    { title: 'Kontoauszüge (synthetisch, 300 Auszüge)', sub: 'Von diesem Projekt erzeugt, schmeichelt also den Mustern. Keiner der 1.396 Händlernamen wurde angetastet.',
+      rows: [['Nur Muster', 50.6], ['+ dein Name und deine Adresse', 73.0], ['+ lokales Namensmodell', 99.4]] },
+  ],
+};
+const CAVEATS = {
+  en: [
+    'Bars show values <b>fully</b> hidden. Half a surname or part of a card number counts as leaked.',
+    'Most leaks on ai4privacy are card numbers that are random digits failing the card checksum (left alone on purpose), and street addresses. Usernames, passwords, dates of birth and ID numbers aren\'t detected; they\'re reported separately, not hidden in the totals.',
+    'The first run found accented emails (anna.müller@…) and several national phone formats leaking. Both were fixed and measured again; these are the numbers after the fix.',
+    'Full tables, method and the commands to reproduce: <a href="https://github.com/bilal-py/hushmask/blob/main/docs/eval/RESULTS.md">docs/eval/RESULTS.md</a>.',
+  ],
+  de: [
+    'Die Balken zeigen <b>vollständig</b> verborgene Werte. Ein halber Nachname oder ein Teil einer Kartennummer zählt als durchgesickert.',
+    'Die meisten Lücken bei ai4privacy sind Kartennummern aus Zufallsziffern, die die Prüfsumme nicht bestehen (absichtlich ignoriert), und Straßenadressen. Benutzernamen, Passwörter, Geburtsdaten und Ausweisnummern werden nicht erkannt; sie werden getrennt ausgewiesen, nicht in den Summen versteckt.',
+    'Der erste Durchlauf fand E-Mails mit Umlauten (anna.müller@…) und mehrere nationale Telefonformate, die durchrutschten. Beides wurde behoben und neu gemessen; das hier sind die Zahlen danach.',
+    'Vollständige Tabellen, Methode und Befehle zum Nachmessen: <a href="https://github.com/bilal-py/hushmask/blob/main/docs/eval/RESULTS.md">docs/eval/RESULTS.md</a>.',
+  ],
+};
+
+// =============================================================================================
+// A small port of hushmask's pattern rules (src/hushmask/detectors.py), so the demo needs no server.
+// The real thing adds a names model, HMAC tokens and a leak check.
+// =============================================================================================
 const digits = (s) => s.replace(/\D/g, '');
 function luhn(s) {
   const n = digits(s); if (n.length < 13 || n.length > 19) return false;
@@ -444,16 +658,14 @@ function luhn(s) {
 function iban(s) {
   const c = s.replace(/[^0-9A-Za-z]/g, '').toUpperCase(); if (c.length < 15 || c.length > 34) return false;
   let rem = 0;
-  for (const ch of c.slice(4) + c.slice(0, 4)) { for (const d of String(parseInt(ch, 36))) rem = (rem * 10 + +d) % 97; }
+  for (const ch of c.slice(4) + c.slice(0, 4)) for (const d of String(parseInt(ch, 36))) rem = (rem * 10 + +d) % 97;
   return rem === 1;
 }
 const VD = [[0,1,2,3,4,5,6,7,8,9],[1,2,3,4,0,6,7,8,9,5],[2,3,4,0,1,7,8,9,5,6],[3,4,0,1,2,8,9,5,6,7],[4,0,1,2,3,9,5,6,7,8],[5,9,8,7,6,0,4,3,2,1],[6,5,9,8,7,1,0,4,3,2],[7,6,5,9,8,2,1,0,4,3],[8,7,6,5,9,3,2,1,0,4],[9,8,7,6,5,4,3,2,1,0]];
 const VP = [[0,1,2,3,4,5,6,7,8,9],[1,5,7,6,2,8,3,0,9,4],[5,8,0,3,7,9,6,1,4,2],[8,9,1,6,0,4,3,5,2,7],[9,4,5,3,1,2,6,8,7,0],[4,2,8,6,5,7,3,9,0,1],[2,7,9,3,8,0,6,4,1,5],[7,0,4,6,9,1,3,2,5,8]];
-function aadhaar(s) {
-  const n = digits(s); if (n.length !== 12 || '01'.includes(n[0])) return false;
-  let c = 0; [...n].reverse().forEach((d, i) => { c = VD[c][VP[i % 8][+d]]; }); return c === 0;
-}
+function aadhaar(s) { const n = digits(s); if (n.length !== 12 || '01'.includes(n[0])) return false; let c = 0; [...n].reverse().forEach((d, i) => { c = VD[c][VP[i % 8][+d]]; }); return c === 0; }
 const count = (lo, hi) => (s) => { const n = digits(s).length; return n >= lo && n <= hi; };
+const notDate = (s) => !/(?<!\d)\d{1,4}[./-]\d{1,2}[./-]\d{1,4}(?!\d)/.test(s);
 const ipv4 = (s) => s.split('.').every((p) => String(+p) === p && +p <= 255);
 
 const RULES = [
@@ -464,23 +676,21 @@ const RULES = [
   { type: 'AADHAAR', p: 50, re: /(?<!\d)[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?!\d)/g, ok: aadhaar },
   { type: 'PAN', p: 40, re: /\b[A-Z]{3}[ABCFGHJLPT][A-Z]\d{4}[A-Z]\b/g },
   { type: 'IFSC', p: 40, re: /\b[A-Z]{4}0[A-Z0-9]{6}\b/g },
-  { type: 'ACCOUNT', p: 60, re: /\b(?:a\/c|acct|account)(?:\s*(?:no\.?|number|num|#))?\s*[:.#-]?\s*([X*\d][\dX* -]{4,22}\d)/dgi, group: 1 },
+  { type: 'ACCOUNT', p: 60, re: /\b(?:a\/c|acct|account|kontonummer|konto-?nr\.?|konto)(?:\s*(?:no\.?|number|num|#))?\s*[:.#-]?\s*([X*\d][\dX* -]{4,22}\d)/dgi, group: 1 },
   { type: 'IP', p: 40, re: /(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])/g, ok: ipv4 },
   { type: 'PHONE', p: 30, re: /(?<![\w+])\+\d{1,3}(?:[ .-]?(?:\(\d{1,5}\)|\d{1,5})){2,5}(?!\d)/g, ok: count(8, 15) },
   { type: 'PHONE', p: 30, re: /(?<![\d+])0?[6-9]\d{4}[ -]?\d{5}(?!\d)/g },
   { type: 'PHONE', p: 30, re: /(?<![\d+])0\d{2,4}[ -]\d{3,4}[ -]?\d{3,4}(?!\d)/g, ok: count(10, 11) },
-  { type: 'PHONE', p: 30, re: /(?<![\w+.(])(?:\(\d{2,5}\)[ .-]?|0\d{1,4}[ .-]?)(?:\d{1,5}[ .-]?){1,4}\d{2,6}(?!\w)(?!\.\d)/g,
-    ok: (s) => count(9, 14)(s) && !/(?<!\d)\d{1,4}[./-]\d{1,2}[./-]\d{1,4}(?!\d)/.test(s) },
+  { type: 'PHONE', p: 30, re: /(?<![\w+.(])(?:\(\d{2,5}\)[ .-]?|0\d{1,4}[ .-]?)(?:\d{1,5}[ .-]?){1,4}\d{2,6}(?!\w)(?!\.\d)/g, ok: (s) => count(9, 14)(s) && notDate(s) },
 ];
-const PRESETS = { finance: new Set(['IFSC', 'IP', 'LOCATION']), strict: new Set() }; // types each preset leaves visible
+const KEPT = { strict: new Set(), finance: new Set(['IFSC', 'IP', 'LOCATION']) };
 const FAMILY = { PERSON: 'person', ADDRESS: 'place', LOCATION: 'place', EMAIL: 'contact', PHONE: 'contact', UPI: 'contact', IP: 'contact', CARD: 'number', IBAN: 'number', ACCOUNT: 'number', AADHAAR: 'number', PAN: 'number', IFSC: 'number' };
-const NAMES = { PERSON: ['person', 'people'], ADDRESS: ['address', 'addresses'], EMAIL: ['email', 'emails'], PHONE: ['phone number', 'phone numbers'], UPI: ['UPI ID', 'UPI IDs'], IP: ['IP address', 'IP addresses'], CARD: ['card number', 'card numbers'], IBAN: ['IBAN', 'IBANs'], ACCOUNT: ['account number', 'account numbers'], AADHAAR: ['Aadhaar number', 'Aadhaar numbers'], PAN: ['PAN', 'PANs'], IFSC: ['IFSC code', 'IFSC codes'] };
 const sw = (t) => `var(--hl-${FAMILY[t] || 'custom'})`;
 const SALT = Math.random().toString(36).slice(2);
 
 function tokenFor(type, value) {
   const norm = type === 'PHONE' ? digits(value).slice(-10) : ['CARD', 'IBAN', 'ACCOUNT', 'AADHAAR'].includes(type) ? value.replace(/[^0-9A-Za-z]/g, '').toUpperCase() : value.trim().replace(/\s+/g, ' ').toLowerCase();
-  let h = 0x811c9dc5; // FNV-1a; the real thing uses HMAC-SHA256 with a per-app secret
+  let h = 0x811c9dc5;
   for (const ch of `${SALT}:${type}:${norm}`) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
   return `${type}_${h.toString(16).padStart(8, '0').slice(0, 6)}`;
 }
@@ -491,11 +701,11 @@ function detect(text, preset, known) {
   const words = new Set();
   for (const k of known) { words.add(k); for (const part of k.split(/\s+/)) if (part.length >= 3) words.add(part); }
   if (words.size) {
-    const re = new RegExp(`(?<!\\w)(?:${[...words].sort((a, b) => b.length - a.length).map(escape).join('|')})(?!\\w)`, 'gi');
+    const re = new RegExp(`(?<![\\p{L}\\p{N}_])(?:${[...words].sort((a, b) => b.length - a.length).map(escape).join('|')})(?![\\p{L}\\p{N}_])`, 'giu');
     for (const m of text.matchAll(re)) found.push({ type: 'PERSON', start: m.index, end: m.index + m[0].length, p: 100 });
   }
   for (const r of RULES) {
-    if (PRESETS[preset].has(r.type)) continue;
+    if (KEPT[preset].has(r.type)) continue;
     for (const m of text.matchAll(r.re)) {
       const value = r.group ? m[r.group] : m[0];
       if (!value || (r.ok && !r.ok(value))) continue;
@@ -509,25 +719,38 @@ function detect(text, preset, known) {
   return chosen.sort((a, b) => a.start - b.start).map((f) => ({ ...f, text: text.slice(f.start, f.end), token: tokenFor(f.type, text.slice(f.start, f.end)) }));
 }
 
-// ---------------------------------------------------------------------------------------------
-// Demo wiring
-// ---------------------------------------------------------------------------------------------
-const SAMPLE = `HDFC BANK statement for Rahul Sharma, A/c No. 50100123456789
-12/11/2026  UPI/rahul.sharma@okhdfcbank/SWIGGY         450.00 Dr
-13/11/2026  POS 4111 1111 1111 1111 AMAZON PAY       1,299.00 Dr
-14/11/2026  NEFT FROM PRIYA MEHTA SALARY            85,000.00 Cr
-15/11/2026  SEPA DE89 3704 0044 0532 0130 00 RENT   18,000.00 Dr
-16/11/2026  STARBUCKS RESERVE                          380.00 Dr
-
-Hi team, please reimburse Neha Gupta (neha@corp.in, +91 98765 43210)
-for the Paris trip. IFSC for the refund: HDFC0001234.`;
-
+// =============================================================================================
+// Page state, language and theme
+// =============================================================================================
 const $ = (id) => document.getElementById(id);
-const state = { preset: 'finance', known: ['Rahul Sharma'], active: null };
-const textEl = $('text'), backEl = $('back'), aiEl = $('ai');
-textEl.value = SAMPLE;
-
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const state = { lang: document.documentElement.lang, scenario: 'email', preset: 'strict', known: [...SCENARIOS.email.known], active: null, edited: false, step: 0, taped: false };
+const t = () => T[state.lang];
+
+function applyLanguage(lang) {
+  state.lang = lang; document.documentElement.lang = lang; save('hm-lang', lang);
+  const dict = lang === 'de' ? DE : EN;
+  document.querySelectorAll('[data-i18n]').forEach((el) => { const v = dict[el.dataset.i18n] ?? EN[el.dataset.i18n]; if (v !== undefined) el.innerHTML = v; });
+  document.querySelectorAll('[data-i18n-attr]').forEach((el) => {
+    for (const pair of el.dataset.i18nAttr.split(',')) { const [attr, key] = pair.split(':'); el.setAttribute(attr, dict[key] ?? EN[key]); }
+  });
+  document.querySelectorAll('[data-lang]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.lang === lang)));
+  if (!state.edited) textEl.value = SCENARIOS[state.scenario].text[lang];
+  renderScenarios(); renderUses(); renderSpecimen(); renderPresetHint(); renderChips(); render(); showStep(state.step); renderResults();
+}
+document.querySelectorAll('[data-lang]').forEach((b) => b.addEventListener('click', () => applyLanguage(b.dataset.lang)));
+
+$('theme').addEventListener('click', () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark'; save('hm-theme', root.dataset.theme);
+});
+
+// =============================================================================================
+// Demo
+// =============================================================================================
+const textEl = $('text'), backEl = $('back'), aiEl = $('ai');
 
 function render() {
   const text = textEl.value;
@@ -535,27 +758,45 @@ function render() {
   let back = '', ai = '', pos = 0;
   const counts = {};
   for (const f of found) {
-    back += esc(text.slice(pos, f.start)) + `<span class="mark${state.active === f.token ? ' on' : ''}" style="--sw:${sw(f.type)}">${esc(f.text)}</span>`;
-    ai += esc(text.slice(pos, f.start)) + `<span class="tape${state.active === f.token ? ' on' : ''}" data-token="${f.token}" style="--sw:${sw(f.type)}">${f.token}</span>`;
+    const on = state.active === f.token ? ' on' : '';
+    back += esc(text.slice(pos, f.start)) + `<span class="mark${on}" style="--sw:${sw(f.type)}">${esc(f.text)}</span>`;
+    ai += esc(text.slice(pos, f.start)) + `<span class="tape${on}" data-token="${f.token}" style="--sw:${sw(f.type)}">${f.token}</span>`;
     pos = f.end;
     counts[f.type] = (counts[f.type] || 0) + 1;
   }
   backEl.innerHTML = back + esc(text.slice(pos)) + '\n ';
   aiEl.innerHTML = ai + esc(text.slice(pos));
-  const parts = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([t, n]) => `${n} ${NAMES[t][n === 1 ? 0 : 1]}`);
-  const list = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts.join('');
-  $('summary').innerHTML = found.length
-    ? `Hiding ${found.length} ${found.length === 1 ? 'value' : 'values'}: ${list}. <span>Hover a token to find where it came from.</span>`
-    : 'Nothing to hide in this text.';
+  const parts = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([type, n]) => `${n} ${t().names[type][n === 1 ? 0 : 1]}`);
+  const list = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} ${t().and} ${parts.at(-1)}` : parts.join('');
+  $('summary').innerHTML = t().summary(found.length, list);
 }
 
 function renderChips() {
-  $('chips').innerHTML = state.known.map((k, i) => `<li><i aria-hidden="true"></i>${esc(k)}<button type="button" data-remove="${i}" aria-label="Stop hiding ${esc(k)}">×</button></li>`).join('');
+  $('chips').innerHTML = state.known.map((k, i) => `<li><i aria-hidden="true"></i>${esc(k)}<button type="button" data-remove="${i}" aria-label="${esc(t().remove(k))}">×</button></li>`).join('');
+}
+function renderPresetHint() {
+  $('preset-hint').textContent = t().presetHints[state.preset];
+  document.querySelectorAll('[data-preset]').forEach((x) => x.setAttribute('aria-checked', String(x.dataset.preset === state.preset)));
+}
+function renderScenarios() {
+  $('scenarios').innerHTML = Object.entries(SCENARIOS).map(([id, s]) => `<button type="button" data-scenario="${id}" aria-pressed="${id === state.scenario && !state.edited}">${s.label[state.lang]}</button>`).join('');
+}
+function loadScenario(id) {
+  const s = SCENARIOS[id];
+  state.scenario = id; state.edited = false; state.known = [...s.known]; state.preset = s.preset || 'strict';
+  textEl.value = s.text[state.lang];
+  renderScenarios(); renderChips(); renderPresetHint(); render();
+}
+function renderUses() {
+  $('uses-list').innerHTML = Object.entries(SCENARIOS).map(([id, s]) => {
+    const [title, body] = s.use[state.lang];
+    return `<div class="use"><h3>${title}</h3><p>${body}</p><button class="btn small" type="button" data-try="${id}">${t().tryThis}</button></div>`;
+  }).join('');
 }
 
-textEl.addEventListener('input', render);
+textEl.addEventListener('input', () => { if (!state.edited) { state.edited = true; renderScenarios(); } render(); });
 textEl.addEventListener('scroll', () => { backEl.scrollTop = textEl.scrollTop; });
-aiEl.addEventListener('mouseover', (e) => { const t = e.target.closest('.tape'); if (t && state.active !== t.dataset.token) { state.active = t.dataset.token; render(); } });
+aiEl.addEventListener('mouseover', (e) => { const tk = e.target.closest('.tape'); if (tk && state.active !== tk.dataset.token) { state.active = tk.dataset.token; render(); } });
 aiEl.addEventListener('mouseleave', () => { state.active = null; render(); });
 $('chips').addEventListener('click', (e) => { const b = e.target.closest('[data-remove]'); if (!b) return; state.known.splice(+b.dataset.remove, 1); renderChips(); render(); });
 $('add-known').addEventListener('submit', (e) => {
@@ -563,85 +804,108 @@ $('add-known').addEventListener('submit', (e) => {
   if (!state.known.some((k) => k.toLowerCase() === v.toLowerCase())) state.known.push(v);
   $('known-input').value = ''; renderChips(); render();
 });
-const HINTS = { finance: 'Keeps merchants, amounts and cities, so the AI can still categorize spending.', strict: 'Hides every kind of value hushmask can find, including bank branch codes.' };
-document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => {
-  state.preset = b.dataset.preset;
-  document.querySelectorAll('[data-preset]').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
-  $('preset-hint').textContent = HINTS[state.preset]; render();
-}));
-renderChips(); render();
+document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => { state.preset = b.dataset.preset; renderPresetHint(); render(); }));
+$('scenarios').addEventListener('click', (e) => { const b = e.target.closest('[data-scenario]'); if (b) loadScenario(b.dataset.scenario); });
+$('uses-list').addEventListener('click', (e) => { const b = e.target.closest('[data-try]'); if (!b) return; loadScenario(b.dataset.try); $('try').scrollIntoView(); });
 
-// ---------------------------------------------------------------------------------------------
-// Hero specimen: one highlight-then-tape moment, then the reader is in control.
-// ---------------------------------------------------------------------------------------------
+// =============================================================================================
+// Hero specimen: one highlight-then-tape moment, then the reader is in control
+// =============================================================================================
+const SPECIMEN = {
+  en: [['Please send the contract to ', ['PERSON', 'Lena Hoffmann', 'PERSON_4aee58'], '.'],
+       ['Reach her at ', ['EMAIL', 'lena.hoffmann@example.de', 'EMAIL_9c2d10'], ' or ', ['PHONE', '+49 151 23456789', 'PHONE_17a458'], '.'],
+       ['The deposit goes to ', ['IBAN', 'DE89 3704 0044 0532 0130 00', 'IBAN_b55883'], '.']],
+  de: [['Bitte schick den Vertrag an ', ['PERSON', 'Lena Hoffmann', 'PERSON_4aee58'], '.'],
+       ['Erreichbar unter ', ['EMAIL', 'lena.hoffmann@example.de', 'EMAIL_9c2d10'], ' oder ', ['PHONE', '+49 151 23456789', 'PHONE_17a458'], '.'],
+       ['Die Kaution geht an ', ['IBAN', 'DE89 3704 0044 0532 0130 00', 'IBAN_b55883'], '.']],
+};
 const spec = $('specimen');
+function renderSpecimen() {
+  $('specimen-lines').innerHTML = SPECIMEN[state.lang].map((line) => `<div class="line">${line.map((part) => typeof part === 'string' ? esc(part)
+    : `<span class="swap" style="--sw:${sw(part[0])}"><span class="hl"></span><span class="real">${esc(part[1])}</span><span class="tok">${part[2]}</span></span>`).join('')}</div>`).join('');
+  setSpecimen(state.taped);
+}
 function setSpecimen(taped) {
-  spec.classList.toggle('taped', taped);
-  $('specimen-state').textContent = taped ? 'What the AI sees.' : 'What you see.';
-  $('specimen-toggle').textContent = taped ? 'Show what you see' : 'Show what the AI sees';
+  state.taped = taped; spec.classList.toggle('taped', taped);
+  $('specimen-state').textContent = taped ? t().specimen.ai : t().specimen.you;
+  $('specimen-toggle').textContent = taped ? t().specimen.showYou : t().specimen.showAi;
 }
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 new IntersectionObserver((entries, obs) => {
-  if (!entries[0].isIntersecting) return;
-  obs.disconnect();
+  if (!entries[0].isIntersecting) return; obs.disconnect();
   setTimeout(() => spec.classList.add('marked'), still ? 0 : 500);
   setTimeout(() => setSpecimen(true), still ? 0 : 1500);
 }, { threshold: 0.6 }).observe(spec);
-$('specimen-toggle').addEventListener('click', () => { spec.classList.add('marked'); setSpecimen(!spec.classList.contains('taped')); });
+$('specimen-toggle').addEventListener('click', () => { spec.classList.add('marked'); setSpecimen(!state.taped); });
 
-// ---------------------------------------------------------------------------------------------
+// =============================================================================================
 // Journey stepper
-// ---------------------------------------------------------------------------------------------
-const tape = (t, type) => `<span class="tape" style="--sw:${sw(type)}">${t}</span>`;
-const STAGES = [
-  { where: 'On your machine', out: false, label: 'your app → hushmask',
-    body: `{\n  "model": "gpt-4o-mini",\n  "messages": [{\n    "role": "user",\n    "content": "Categorize:\\n  NEFT FROM PRIYA MEHTA SALARY 85,000.00 Cr\\n  POS 4111 1111 1111 1111 AMAZON PAY 1,299.00 Dr\\nSigned, Rahul Sharma"\n  }]\n}`,
-    note: 'Your app sends its usual request to http://127.0.0.1:8700/v1 with its hushmask key instead of the provider key.' },
-  { where: 'Leaving your machine', out: true, label: 'hushmask → AI provider',
-    body: `{\n  "model": "gpt-4o-mini",\n  "messages": [{\n    "role": "system",\n    "content": "Some values were replaced with placeholders… copy them exactly."\n  }, {\n    "role": "user",\n    "content": "Categorize:\\n  NEFT FROM ${tape('PERSON_4aee58', 'PERSON')} SALARY 85,000.00 Cr\\n  POS ${tape('CARD_3ef187', 'CARD')} AMAZON PAY 1,299.00 Dr\\nSigned, ${tape('PERSON_8b2b69', 'PERSON')}"\n  }]\n}`,
-    note: 'Names and the card are swapped for tokens. Merchants and amounts stay, so the AI can still do the job. If anything detectable survived, the request would be refused here.' },
-  { where: 'Coming back', out: true, label: 'AI provider → hushmask',
-    body: `{\n  "choices": [{\n    "message": {\n      "content": "${tape('PERSON_4aee58', 'PERSON')}: Income\\nAMAZON PAY (${tape('CARD_3ef187', 'CARD')}): Shopping\\nFrom ${tape('PERSON_8b2b69', 'PERSON')}'s statement."\n    }\n  }]\n}`,
-    note: 'The AI categorized correctly without ever learning who Priya or Rahul are, or the card number.' },
-  { where: 'On your machine', out: false, label: 'hushmask → your app',
-    body: `{\n  "choices": [{\n    "message": {\n      "content": "PRIYA MEHTA: Income\\nAMAZON PAY (4111 1111 1111 1111): Shopping\\nFrom Rahul Sharma's statement."\n    }\n  }]\n}`,
-    note: 'Tokens become real values again, inside JSON too. Your app gets a normal answer and never knows hushmask was there.' },
-];
-let step = 0;
+// =============================================================================================
+const tape = (tok, type) => `<span class="tape" style="--sw:${sw(type)}">${tok}</span>`;
+const STAGES = {
+  en: [
+    { where: 'On your machine', out: false, label: 'your app → hushmask',
+      body: `{\n  "model": "gpt-4o-mini",\n  "messages": [{\n    "role": "user",\n    "content": "Summarize: please send the contract to Lena Hoffmann (lena.hoffmann@example.de). Jonas Becker pays the first invoice with card 4111 1111 1111 1111."\n  }]\n}`,
+      note: 'Your app sends its usual request to http://127.0.0.1:8700/v1 with its hushmask key instead of the provider key.' },
+    { where: 'Leaving your machine', out: true, label: 'hushmask → AI provider',
+      body: `{\n  "messages": [{\n    "role": "system",\n    "content": "Some values were replaced with placeholders… copy them exactly."\n  }, {\n    "role": "user",\n    "content": "Summarize: please send the contract to ${tape('PERSON_4aee58', 'PERSON')} (${tape('EMAIL_9c2d10', 'EMAIL')}). ${tape('PERSON_7b1e03', 'PERSON')} pays the first invoice with card ${tape('CARD_3ef187', 'CARD')}."\n  }]\n}`,
+      note: 'Names, the email and the card are swapped for tokens; the request still makes sense. If anything detectable survived, the request would be refused here.' },
+    { where: 'Coming back', out: true, label: 'AI provider → hushmask',
+      body: `{\n  "choices": [{ "message": { "content": "Send the contract to ${tape('PERSON_4aee58', 'PERSON')} at ${tape('EMAIL_9c2d10', 'EMAIL')}. ${tape('PERSON_7b1e03', 'PERSON')} covers the first invoice (card ${tape('CARD_3ef187', 'CARD')})." } }]\n}`,
+      note: 'The AI did the job without learning who Lena or Jonas are, or the card number.' },
+    { where: 'On your machine', out: false, label: 'hushmask → your app',
+      body: `{\n  "choices": [{ "message": { "content": "Send the contract to Lena Hoffmann at lena.hoffmann@example.de. Jonas Becker covers the first invoice (card 4111 1111 1111 1111)." } }]\n}`,
+      note: 'Tokens become real values again, inside JSON too. Your app gets a normal answer and never knows hushmask was there.' },
+  ],
+  de: [
+    { where: 'Auf deinem Rechner', out: false, label: 'deine App → hushmask',
+      body: `{\n  "model": "gpt-4o-mini",\n  "messages": [{\n    "role": "user",\n    "content": "Fasse zusammen: Bitte schick den Vertrag an Lena Hoffmann (lena.hoffmann@example.de). Jonas Becker zahlt die erste Rechnung mit der Karte 4111 1111 1111 1111."\n  }]\n}`,
+      note: 'Deine App schickt ihre übliche Anfrage an http://127.0.0.1:8700/v1, mit ihrem hushmask-Schlüssel statt dem des Anbieters.' },
+    { where: 'Verlässt deinen Rechner', out: true, label: 'hushmask → KI-Anbieter',
+      body: `{\n  "messages": [{\n    "role": "system",\n    "content": "Einige Werte wurden durch Platzhalter ersetzt… exakt übernehmen."\n  }, {\n    "role": "user",\n    "content": "Fasse zusammen: Bitte schick den Vertrag an ${tape('PERSON_4aee58', 'PERSON')} (${tape('EMAIL_9c2d10', 'EMAIL')}). ${tape('PERSON_7b1e03', 'PERSON')} zahlt die erste Rechnung mit der Karte ${tape('CARD_3ef187', 'CARD')}."\n  }]\n}`,
+      note: 'Namen, E-Mail und Karte werden zu Platzhaltern; die Anfrage ergibt weiter Sinn. Wäre noch etwas Erkennbares übrig, würde die Anfrage hier abgelehnt.' },
+    { where: 'Kommt zurück', out: true, label: 'KI-Anbieter → hushmask',
+      body: `{\n  "choices": [{ "message": { "content": "Den Vertrag an ${tape('PERSON_4aee58', 'PERSON')} unter ${tape('EMAIL_9c2d10', 'EMAIL')} schicken. ${tape('PERSON_7b1e03', 'PERSON')} übernimmt die erste Rechnung (Karte ${tape('CARD_3ef187', 'CARD')})." } }]\n}`,
+      note: 'Die KI hat die Aufgabe erledigt, ohne zu erfahren, wer Lena oder Jonas sind, oder die Kartennummer.' },
+    { where: 'Auf deinem Rechner', out: false, label: 'hushmask → deine App',
+      body: `{\n  "choices": [{ "message": { "content": "Den Vertrag an Lena Hoffmann unter lena.hoffmann@example.de schicken. Jonas Becker übernimmt die erste Rechnung (Karte 4111 1111 1111 1111)." } }]\n}`,
+      note: 'Platzhalter werden wieder zu echten Werten, auch in JSON. Deine App bekommt eine normale Antwort und merkt nichts von hushmask.' },
+  ],
+};
 function showStep(i) {
-  step = i; const s = STAGES[i];
+  state.step = i; const s = STAGES[state.lang][i];
   $('stage-body').innerHTML = s.body; $('stage-note').textContent = s.note; $('stage-label').textContent = s.label;
   $('stage-where').textContent = s.where; $('stage-who').classList.toggle('out', s.out);
-  document.querySelectorAll('#stops button').forEach((b) => {
-    if (+b.dataset.step === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
-  });
-  $('next-step').textContent = i === STAGES.length - 1 ? 'Start again' : 'Next stop';
+  document.querySelectorAll('#stops button').forEach((b) => { if (+b.dataset.step === i) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
+  $('next-step').textContent = i === 3 ? t().again : t().next;
 }
 document.querySelectorAll('#stops button').forEach((b) => b.addEventListener('click', () => showStep(+b.dataset.step)));
-$('next-step').addEventListener('click', () => showStep((step + 1) % STAGES.length));
-showStep(0);
+$('next-step').addEventListener('click', () => showStep((state.step + 1) % 4));
 
-// ---------------------------------------------------------------------------------------------
-// Results bars (animate once when they scroll into view)
-// ---------------------------------------------------------------------------------------------
-$('results-list').innerHTML = RESULTS.map((r) => `
-  <div class="result">
-    <h3>${r.title}</h3><p class="sub">${r.sub}</p>
-    <div class="bars">${r.rows.map((row) => `
-      <div class="bar"><span>${row.name}</span><div class="track" role="img" aria-label="${row.name}: ${row.value.toFixed(1)}% hidden"><div class="fill" data-w="${row.value}"></div></div><b>${row.value.toFixed(1)}%</b></div>`).join('')}
-    </div>
-  </div>`).join('');
-$('caveats').innerHTML = CAVEATS.map((c) => `<li>${c}</li>`).join('');
+// =============================================================================================
+// Results bars
+// =============================================================================================
+let barsShown = false;
+function renderResults() {
+  const fmt = (v) => state.lang === 'de' ? `${v.toFixed(1).replace('.', ',')} %` : `${v.toFixed(1)}%`;
+  $('results-list').innerHTML = RESULTS[state.lang].map((r) => `
+    <div class="result"><h3>${r.title}</h3><p class="sub">${r.sub}</p>
+      <div class="bars">${r.rows.map(([name, value]) => `
+        <div class="bar"><span>${name}</span><div class="track" role="img" aria-label="${name}: ${fmt(value)}"><div class="fill" data-w="${value}" style="width:${barsShown ? value : 0}%"></div></div><b>${fmt(value)}</b></div>`).join('')}
+      </div></div>`).join('');
+  $('caveats').innerHTML = CAVEATS[state.lang].map((c) => `<li>${c}</li>`).join('');
+}
 new IntersectionObserver((entries, obs) => {
-  if (!entries[0].isIntersecting) return; obs.disconnect();
+  if (!entries[0].isIntersecting) return; obs.disconnect(); barsShown = true;
   document.querySelectorAll('.fill').forEach((f) => { f.style.width = `${f.dataset.w}%`; });
 }, { threshold: 0.2 }).observe($('results-list'));
 
-// copy buttons
 document.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
   await navigator.clipboard.writeText($(b.dataset.copy).innerText);
-  b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; }, 1500);
+  const label = b.textContent; b.textContent = '✓'; setTimeout(() => { b.textContent = label; }, 1500);
 }));
+
+applyLanguage(state.lang);
 </script>
 </body>
 </html>
